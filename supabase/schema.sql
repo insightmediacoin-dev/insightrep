@@ -15,3 +15,9 @@ create table if not exists public.businesses (
 );
 
 create index if not exists businesses_owner_phone_idx on public.businesses (owner_phone);
+
+create table if not exists public.otp_store (
+  identifier text primary key,
+  otp text not null,
+  expires_at timestamptz not null
+);
