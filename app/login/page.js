@@ -114,8 +114,11 @@ export default function LoginPage() {
       localStorage.setItem(OWNER_IDENTIFIER_STORAGE_KEY, identifier);
       localStorage.setItem(OWNER_IDENTIFIER_TYPE_STORAGE_KEY, mode);
       localStorage.setItem(PHONE_STORAGE_KEY, identifier);
-      router.push("/setup");
-    } finally {
+      if (data.hasProfile) {
+        router.push("/dashboard");
+      } else {
+        router.push("/setup");
+      }    } finally {
       setLoading(false);
     }
   }
