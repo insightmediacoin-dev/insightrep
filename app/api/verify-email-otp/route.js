@@ -4,36 +4,34 @@ import { createAdminClient } from '@/lib/supabase-admin';
 export async function POST(request) {
   try {
     const { email, otp } = await request.json();
+    const normalizedEmail = String(email ?? '').trim().toLowerCase();
     const admin = createAdminClient();
 
-    // Verify OTP from otp_store
     const { data: record } = await admin
       .from('otp_store')
       .select('*')
-      .eq('identifier', email)
+      .eq('identifier', normalizedEmail)
       .eq('otp', otp)
       .gt('expires_at', new Date().toISOString())
-      .single();
+      .maybeSingle();  // ← fix
 
     if (!record) {
       return NextResponse.json({ ok: false, message: 'Invalid or expired OTP' }, { status: 401 });
     }
 
-    // Delete used OTP
-    await admin.from('otp_store').delete().eq('identifier', email);
+    await admin.from('otp_store').delete().eq('identifier', normalizedEmail);
 
-    // Check if business already exists
     const { data: existing } = await admin
       .from('businesses')
       .select('id')
-      .eq('owner_phone', email)
-      .single();
+      .eq('owner_phone', normalizedEmail)
+      .maybeSingle();  // ← fix
 
     return NextResponse.json({
       ok: true,
-      email,
+      email: normalizedEmail,
       hasProfile: !!existing,
-      businessId: existing?.id || null
+      businessId: existing?.id || null,
     });
 
   } catch (err) {
