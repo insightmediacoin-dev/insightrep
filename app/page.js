@@ -207,6 +207,9 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ROI Calculator */}
+        <ROICalculator />
+
         {/* Pricing */}
         <section className="border-t border-white/5 px-4 py-14 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-5xl">
