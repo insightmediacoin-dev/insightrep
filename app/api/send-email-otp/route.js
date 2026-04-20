@@ -7,7 +7,7 @@ const TTL_MINUTES = 10;
 
 export async function POST(request) {
   const resendKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL ?? "InsightRep <onboarding@resend.dev>";
+  const fromEmail = 'InsightRep <noreply@insightmedia.co.in>';
   const admin = createAdminClient();
 
   if (!admin) return NextResponse.json({ ok: false, message: "Supabase admin client not configured." }, { status: 500 });

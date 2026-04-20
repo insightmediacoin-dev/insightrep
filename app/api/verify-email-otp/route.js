@@ -1,25 +1,42 @@
-import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase-admin";
-import { isValidEmail } from "@/lib/phone";
+import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 export async function POST(request) {
-  const admin = createAdminClient();
-  if (!admin) return NextResponse.json({ ok: false, message: "Supabase admin client not configured." }, { status: 500 });
+  try {
+    const { email, otp } = await request.json();
+    const admin = createAdminClient();
 
-  let body;
-  try { body = await request.json(); } catch { return NextResponse.json({ ok: false, message: "Invalid JSON." }, { status: 400 }); }
+    // Verify OTP from otp_store
+    const { data: record } = await admin
+      .from('otp_store')
+      .select('*')
+      .eq('identifier', email)
+      .eq('otp', otp)
+      .gt('expires_at', new Date().toISOString())
+      .single();
 
-  const email = String(body.email ?? "").trim().toLowerCase();
-  const otp = String(body.otp ?? "").replace(/\D/g, "");
-  if (!isValidEmail(email)) return NextResponse.json({ ok: false, message: "Valid email required." }, { status: 400 });
-  if (otp.length !== 6) return NextResponse.json({ ok: false, message: "OTP required." }, { status: 400 });
+    if (!record) {
+      return NextResponse.json({ ok: false, message: 'Invalid or expired OTP' }, { status: 401 });
+    }
 
-  const { data, error } = await admin.from("otp_store").select("otp, expires_at").eq("identifier", email).maybeSingle();
-  if (error) return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
-  if (!data) return NextResponse.json({ ok: false, message: "OTP not found." }, { status: 401 });
-  if (data.otp !== otp) return NextResponse.json({ ok: false, message: "Invalid OTP." }, { status: 401 });
-  if (new Date(data.expires_at).getTime() < Date.now()) return NextResponse.json({ ok: false, message: "OTP expired." }, { status: 401 });
+    // Delete used OTP
+    await admin.from('otp_store').delete().eq('identifier', email);
 
-  await admin.from("otp_store").delete().eq("identifier", email);
-  return NextResponse.json({ ok: true });
+    // Check if business already exists
+    const { data: existing } = await admin
+      .from('businesses')
+      .select('id')
+      .eq('owner_phone', email)
+      .single();
+
+    return NextResponse.json({
+      ok: true,
+      email,
+      hasProfile: !!existing,
+      businessId: existing?.id || null
+    });
+
+  } catch (err) {
+    return NextResponse.json({ ok: false, message: err.message }, { status: 500 });
+  }
 }
