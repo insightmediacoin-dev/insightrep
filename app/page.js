@@ -269,9 +269,11 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center text-xs text-text-muted sm:flex-row sm:text-left">
           <p>© {new Date().getFullYear()} InsightRep. Made for Indian hospitality.</p>
           <div className="flex gap-4">
-            <Link href="/login" className="hover:text-white">Owners</Link>
-            <span className="text-white/20">|</span>
-            <span>Customers use your QR — no app install.</span>
+          <Link href="/login" className="hover:text-white">Owners</Link>
+<span className="text-white/20">|</span>
+<Link href="/legal" className="hover:text-white">Terms & Privacy</Link>
+<span className="text-white/20">|</span>
+<span>Customers use your QR — no app install.</span>
           </div>
         </div>
       </footer>
