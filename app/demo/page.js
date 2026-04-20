@@ -57,7 +57,7 @@ export default function DemoPage() {
             <p className="text-xs font-semibold text-accent">LIVE DEMO — This is how your customers experience InsightRep</p>
           </div>
           <Link href="/login" className="shrink-0 rounded-full bg-accent px-3 py-1 text-[10px] font-bold text-white hover:brightness-110">
-            Get started →
+            Get started
           </Link>
         </div>
       </div>
@@ -105,7 +105,7 @@ export default function DemoPage() {
         {/* Aspects step */}
         {step === "aspects" && (
           <section className="mt-10 space-y-6">
-            <button type="button" onClick={() => setStep("rating")} className="text-sm text-text-muted hover:text-white">← Back</button>
+            <button type="button" onClick={() => setStep("rating")} className="text-sm text-text-muted hover:text-white">Back</button>
             <h2 className="text-lg font-semibold text-white">What stood out?</h2>
             <p className="text-sm text-text-muted">Pick any that apply.</p>
             <div className="flex flex-wrap gap-2">
@@ -177,6 +177,7 @@ export default function DemoPage() {
                 className="flex h-11 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110">
                 Get InsightRep — Rs.1,499/month
               </Link>
+              <p className="text-xs text-text-muted">No contract · Cancel anytime with 7 days notice · Free setup call included</p>
               <button type="button" onClick={() => { setStep("rating"); setRating(null); setAspects([]); setCopied(false); }}
                 className="text-xs text-text-muted hover:text-white">
                 Restart demo
