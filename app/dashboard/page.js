@@ -16,35 +16,63 @@ function formatCreatedAt(iso) {
 
 function QRDownloadCard({ reviewUrl, businessName }) {
   return (
-    <div
-      style={{
-        width: 400,
-        background: "#ffffff",
-        borderRadius: 24,
-        padding: "36px 32px 28px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 16,
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: 2, color: "#E5322D", textTransform: "uppercase" }}>
-        InsightRep
-      </p>
-      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#0f1729", textAlign: "center" }}>
-        {businessName}
-      </h2>
-      <p style={{ margin: 0, fontSize: 14, color: "#555", textAlign: "center" }}>
-        Scan to review us on Google
-      </p>
+    <div style={{ width: 400, background: "#ffffff", borderRadius: 24, padding: "36px 32px 28px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, fontFamily: "Arial, sans-serif" }}>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, letterSpacing: 2, color: "#E5322D", textTransform: "uppercase" }}>InsightRep</p>
+      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#0f1729", textAlign: "center" }}>{businessName}</h2>
+      <p style={{ margin: 0, fontSize: 14, color: "#555", textAlign: "center" }}>Scan to review us on Google</p>
       <div style={{ background: "#fff", padding: 16, borderRadius: 16, border: "1px solid #eee" }}>
         {reviewUrl ? <QRCode value={reviewUrl} size={200} level="M" /> : null}
       </div>
-      <p style={{ margin: 0, fontSize: 11, color: "#aaa", textAlign: "center", marginTop: 4 }}>
-        InsightRep · By Insight Media
-      </p>
+      <p style={{ margin: 0, fontSize: 11, color: "#aaa", textAlign: "center", marginTop: 4 }}>InsightRep · By Insight Media</p>
     </div>
+  );
+}
+
+function PricingSection({ currentPlan }) {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-lg font-bold text-white">Plans & Pricing</h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+
+        {/* Monthly */}
+        <div className={`rounded-2xl border p-6 space-y-4 ${currentPlan === 'monthly' ? 'border-accent bg-accent/10' : 'border-white/10 bg-navy-muted/40'}`}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">Starter</p>
+            <p className="mt-1 text-3xl font-extrabold text-white">₹1,499<span className="text-base font-medium text-text-muted">/mo</span></p>
+            <p className="text-xs text-text-muted mt-1">₹49 per day · Cancel anytime</p>
+          </div>
+          <ul className="space-y-2 text-sm text-text-muted">
+            {["Unlimited QR scans", "AI review generation", "3–5 star filter", "Dashboard analytics", "Weekly email report", "PNG QR download"].map(f => (
+              <li key={f} className="flex items-center gap-2"><span className="text-accent">✓</span>{f}</li>
+            ))}
+          </ul>
+          <button disabled className="w-full rounded-full border border-white/15 py-2.5 text-sm font-semibold text-text-muted cursor-not-allowed opacity-60">
+            {currentPlan === 'monthly' ? 'Current Plan' : 'Coming Soon'}
+          </button>
+        </div>
+
+        {/* Annual */}
+        <div className={`rounded-2xl border p-6 space-y-4 relative overflow-hidden ${currentPlan === 'annual' ? 'border-accent bg-accent/10' : 'border-accent/40 bg-accent/5'}`}>
+          <div className="absolute top-3 right-3 bg-accent text-white text-[10px] font-bold px-2 py-1 rounded-full tracking-wide">BEST VALUE</div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-accent">Annual</p>
+            <p className="mt-1 text-3xl font-extrabold text-white">₹12,990<span className="text-base font-medium text-text-muted">/yr</span></p>
+            <p className="text-xs text-accent mt-1 font-semibold">3 months FREE · Save ₹4,998</p>
+            <p className="text-xs text-text-muted">₹35 per day</p>
+          </div>
+          <ul className="space-y-2 text-sm text-text-muted">
+            {["Everything in Starter", "3 extra months free", "Priority WhatsApp support", "Founding member rate locked"].map(f => (
+              <li key={f} className="flex items-center gap-2"><span className="text-accent">✓</span>{f}</li>
+            ))}
+          </ul>
+          <button disabled className="w-full rounded-full bg-accent py-2.5 text-sm font-semibold text-white cursor-not-allowed opacity-60">
+            {currentPlan === 'annual' ? 'Current Plan' : 'Coming Soon'}
+          </button>
+        </div>
+
+      </div>
+      <p className="text-center text-xs text-text-muted">Payments coming soon via Razorpay · WhatsApp us to activate manually</p>
+    </section>
   );
 }
 
@@ -137,6 +165,7 @@ export default function DashboardPage() {
     <div className="min-h-[100dvh] bg-navy px-4 py-10 sm:py-14">
       <div className="mx-auto flex max-w-3xl flex-col gap-8">
 
+        {/* Header */}
         <header className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-accent">Dashboard</p>
@@ -148,10 +177,12 @@ export default function DashboardPage() {
           </button>
         </header>
 
+        {/* Address */}
         <section className="rounded-2xl border border-white/10 bg-navy-muted/40 p-5">
           <p className="text-white">{business.address || "—"}</p>
         </section>
 
+        {/* Analytics */}
         <section className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 text-center">
             <p className="text-3xl font-bold text-white">{stats.scans}</p>
@@ -163,23 +194,20 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {/* QR */}
         <section className="grid gap-8 lg:grid-cols-2">
           <div className="flex flex-col gap-4">
-            {/* Hidden card used for PNG export */}
             <div style={{ position: "absolute", left: -9999, top: -9999 }}>
               <div ref={qrCardRef}>
                 <QRDownloadCard reviewUrl={reviewUrl} businessName={business.name} />
               </div>
             </div>
-
-            {/* Visible QR */}
             <div className="rounded-2xl border border-white/10 bg-white p-6">
               <p className="text-xs break-all text-gray-500">{reviewUrl}</p>
               <div className="mt-4 flex justify-center bg-white p-4">
                 {reviewUrl ? <QRCode value={reviewUrl} size={200} level="M" /> : null}
               </div>
             </div>
-
             <button type="button" onClick={downloadQR} disabled={downloading}
               className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">
               {downloading ? "Generating…" : "⬇ Download QR (PNG)"}
@@ -197,6 +225,9 @@ export default function DashboardPage() {
             </div>
           </div>
         </section>
+
+        {/* Pricing */}
+        <PricingSection currentPlan={business.plan} />
 
       </div>
     </div>
