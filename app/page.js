@@ -1,7 +1,5 @@
 import Link from "next/link";
 import ROICalculator from "./components/ROICalculator";
-import Link from "next/link";
-import ROICalculator from "./components/ROICalculator";
 
 const stepsOwner = [
   {
