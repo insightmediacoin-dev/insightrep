@@ -171,6 +171,7 @@ export default function DashboardPage() {
             <p className="text-sm font-medium text-accent">Dashboard</p>
             <h1 className="text-2xl font-bold text-white">{business.name}</h1>
           </div>
+          <Link href="/setup" className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-text-muted transition hover:border-white/30 hover:text-white">Edit Profile</Link>
           <button type="button" onClick={logout}
             className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-text-muted transition hover:border-white/30 hover:text-white">
             Logout
