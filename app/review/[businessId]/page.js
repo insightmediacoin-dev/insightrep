@@ -31,8 +31,6 @@ function RatingStep({ rating, hoverRating, setRating, setHoverRating, onContinue
         onMouseLeave={() => setHoverRating(null)}
         role="radiogroup"
         aria-label="Star rating"
-        aria-valuenow={rating ?? undefined}
-        aria-valuetext={rating != null ? `${rating} out of 5 stars` : undefined}
       >
         {[1, 2, 3, 4, 5].map((n) => {
           const filled = preview >= n;
@@ -93,6 +91,7 @@ export default function CustomerReviewPage() {
   const [genError, setGenError] = useState("");
   const [limitReached, setLimitReached] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
     if (!businessId) return;
@@ -112,13 +111,11 @@ export default function CustomerReviewPage() {
         setBusiness(data.business);
         setStep("rating");
 
-        // Track QR scan (silent)
         fetch("/api/business/scan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ businessId }),
         }).catch(() => {});
-
       } catch {
         if (!cancelled) {
           setLoadError("Could not load this business.");
@@ -130,6 +127,17 @@ export default function CustomerReviewPage() {
     load();
     return () => { cancelled = true; };
   }, [businessId]);
+
+  // Countdown timer on success screen
+  useEffect(() => {
+    if (step !== "success") return;
+    if (countdown <= 0) {
+      window.location.href = business?.gmb_link ?? "/";
+      return;
+    }
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [step, countdown, business]);
 
   const toggleAspect = useCallback((id) => {
     setAspects((prev) => prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]);
@@ -151,7 +159,7 @@ export default function CustomerReviewPage() {
       if (!res.ok) {
         if (data.limitReached) {
           setLimitReached(true);
-          setGenError("This business has reached its free plan limit for this month. The owner needs to upgrade to continue.");
+          setGenError("This business has reached its free plan limit for this month.");
         } else {
           setGenError(data.message ?? "Generation failed.");
         }
@@ -173,19 +181,20 @@ export default function CustomerReviewPage() {
     try {
       await navigator.clipboard.writeText(reviews[selected]);
     } catch {
-      setGenError("Could not access the clipboard. Copy the text manually, then tap below.");
+      setGenError("Could not access clipboard. Copy the text manually.");
       setBusy(false);
       return;
     }
 
-    // Track review copy (silent)
     fetch("/api/business/track-review", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ businessId, rating }),
     }).catch(() => {});
 
-    window.location.href = business.gmb_link;
+    setCountdown(5);
+    setStep("success");
+    setBusy(false);
   }
 
   if (step === "loading") {
@@ -246,7 +255,7 @@ export default function CustomerReviewPage() {
             {limitReached ? (
               <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5 text-center space-y-2">
                 <p className="text-sm font-semibold text-accent">Monthly limit reached</p>
-                <p className="text-xs text-text-muted">This business has used all 10 free AI reviews this month. The owner needs to upgrade to the monthly plan to continue.</p>
+                <p className="text-xs text-text-muted">This business has used all 10 free AI reviews this month. The owner needs to upgrade to continue.</p>
               </div>
             ) : null}
 
@@ -294,13 +303,40 @@ export default function CustomerReviewPage() {
               onClick={copyAndOpen}
               className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white disabled:opacity-50"
             >
-              {busy ? "Opening…" : "Copy selected & open Google"}
+              {busy ? "Copying…" : "Copy & open Google"}
             </button>
             <button type="button" onClick={() => router.push("/")} className="w-full text-center text-sm text-text-muted hover:text-white">
               Cancel
             </button>
           </section>
         )}
+
+        {step === "success" && (
+          <section className="mt-16 flex flex-col items-center gap-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20 text-5xl">
+              ✅
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-white">Review copied!</h2>
+              <p className="text-sm text-text-muted max-w-xs mx-auto">
+                Your review is copied to clipboard. Opening Google now — just paste and hit Post.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-4 w-full text-left">
+              <p className="text-xs text-text-muted mb-2 uppercase tracking-wide font-medium">Your review</p>
+              <p className="text-sm text-white leading-relaxed">{reviews[selected]}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { window.location.href = business?.gmb_link; }}
+              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110"
+            >
+              Open Google now ({countdown}s)
+            </button>
+            <p className="text-xs text-text-muted">Redirecting automatically in {countdown} seconds</p>
+          </section>
+        )}
+
       </div>
     </div>
   );
