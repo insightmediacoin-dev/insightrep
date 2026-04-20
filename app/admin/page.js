@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 const ADMIN_PASSWORD = "577151032779";
+const MONTHLY_PRICE = 1499;
+const ANNUAL_PRICE = 12990;
 
 function PlanBadge({ plan }) {
   const styles = {
@@ -17,6 +19,10 @@ function PlanBadge({ plan }) {
   );
 }
 
+function formatINR(amount) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+}
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState("");
@@ -27,12 +33,8 @@ export default function AdminPage() {
   const [updating, setUpdating] = useState(null);
 
   function login() {
-    if (password === ADMIN_PASSWORD) {
-      setAuthed(true);
-      setPwError("");
-    } else {
-      setPwError("Wrong password.");
-    }
+    if (password === ADMIN_PASSWORD) { setAuthed(true); setPwError(""); }
+    else setPwError("Wrong password.");
   }
 
   async function loadBusinesses() {
@@ -59,9 +61,7 @@ export default function AdminPage() {
         body: JSON.stringify({ secret: ADMIN_PASSWORD, businessId, plan }),
       });
       await loadBusinesses();
-    } finally {
-      setUpdating(null);
-    }
+    } finally { setUpdating(null); }
   }
 
   async function deleteBusiness(businessId, name) {
@@ -74,12 +74,17 @@ export default function AdminPage() {
         body: JSON.stringify({ secret: ADMIN_PASSWORD, businessId }),
       });
       await loadBusinesses();
-    } finally {
-      setUpdating(null);
-    }
+    } finally { setUpdating(null); }
   }
 
   useEffect(() => { if (authed) loadBusinesses(); }, [authed]);
+
+  // Revenue calculations
+  const monthlyCount = businesses.filter(b => b.plan === "monthly").length;
+  const annualCount = businesses.filter(b => b.plan === "annual").length;
+  const mrr = (monthlyCount * MONTHLY_PRICE) + (annualCount * Math.round(ANNUAL_PRICE / 12));
+  const arr = mrr * 12;
+  const totalRevenue = (monthlyCount * MONTHLY_PRICE) + (annualCount * ANNUAL_PRICE);
 
   if (!authed) {
     return (
@@ -107,6 +112,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-[100dvh] bg-navy px-4 py-10">
       <div className="mx-auto max-w-6xl space-y-8">
+
         <header className="flex items-center justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-accent">InsightRep</p>
@@ -116,12 +122,41 @@ export default function AdminPage() {
             ↻ Refresh
           </button>
         </header>
-        <section className="grid grid-cols-2 gap-4 sgrid-cols-4">
+
+        {/* Revenue */}
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-text-muted">Revenue</h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5 text-center">
+              <p className="text-2xl font-extrabold text-accent">{formatINR(mrr)}</p>
+              <p className="mt-1 text-xs text-text-muted uppercase tracking-wide">MRR</p>
+              <p className="mt-1 text-[10px] text-text-muted">Monthly Recurring</p>
+            </div>
+            <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-5 text-center">
+              <p className="text-2xl font-extrabold text-green-400">{formatINR(arr)}</p>
+              <p className="mt-1 text-xs text-text-muted uppercase tracking-wide">ARR</p>
+              <p className="mt-1 text-[10px] text-text-muted">Annual Run Rate</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-5 text-center">
+              <p className="text-2xl font-extrabold text-white">{formatINR(totalRevenue)}</p>
+              <p className="mt-1 text-xs text-text-muted uppercase tracking-wide">Total Billed</p>
+              <p className="mt-1 text-[10px] text-text-muted">This cycle</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-5 text-center">
+              <p className="text-2xl font-extrabold text-white">{monthlyCount + annualCount}</p>
+              <p className="mt-1 text-xs text-text-muted uppercase tracking-wide">Paying Clients</p>
+              <p className="mt-1 text-[10px] text-text-muted">{monthlyCount} monthly · {annualCount} annual</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Business counts */}
+        <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
             { label: "Total Businesses", value: businesses.length },
             { label: "Free Plan", value: businesses.filter(b => !b.plan || b.plan === "free").length },
-            { label: "Monthly Plan", value: businesses.filter(b => b.plan === "monthly").length },
-            { label: "Annual Plan", value: businesses.filter(b => b.plan === "annual").length },
+            { label: "Monthly Plan", value: monthlyCount },
+            { label: "Annual Plan", value: annualCount },
           ].map(s => (
             <div key={s.label} className="rounded-2xl border border-white/10 bg-navy-muted/40 p-5 text-center">
               <p className="text-2xl font-bold text-white">{s.value}</p>
@@ -129,13 +164,15 @@ export default function AdminPage() {
             </div>
           ))}
         </section>
+
+        {/* Table */}
         {loading ? (
           <p className="text-text-muted text-sm">Loading…</p>
         ) : error ? (
           <p className="text-accent text-sm">{error}</p>
         ) : (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold uercase tracking-widest text-text-muted">All Businesses</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted">All Businesses</h2>
             <div className="overflow-x-auto rounded-2xl border border-white/10">
               <table className="w-full text-sm">
                 <thead>
@@ -145,44 +182,51 @@ export default function AdminPage() {
                     <th className="px-4 py-3">Plan</th>
                     <th className="px-4 py-3">Scans</th>
                     <th className="px-4 py-3">Reviews</th>
+                    <th className="px-4 py-3">Revenue</th>
                     <th className="px-4 py-3">Joined</th>
                     <th className="px-4 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {businesses.map((b, i) => (
-                    <tr key={b.id} className={`border-b border-white/5 ${i % 2 === 0 ? "bg-navy/40" : "bg-navy-muted/20"}`}>
-                      <td className="px-4 py-3 font-medium text-white">{b.name}</td>
-                      <td className="px-4 py-3 text-text-muted text-xs">{b.owner_phone}</td>
-                      <td className="px-4 py-3"><PlanBadge plan={b.plan} /></td>
-                      <td className="px-4 py-3 text-white font-semibold">{b.scans ?? 0}</td>
-                      <td className="px-4 py-3 text-accent font-semibold">{b.reviews ?? 0}</td>
-                      <td className="px-4 py-3 text-text-muted text-xs">
-                        {b.created_at ? new Date(b.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={b.plan ?? "free"}
-                            disabled={updating === b.id}
-                            onChange={e => changePlan(b.id, e.target.value)}
-                          className="rounded-lg border border-white/15 bg-navy/80 px-2 py-1 text-xs text-white outline-none focus:border-accent/50"
-                          >
-                            <option value="free">Free</option>
-                            <option value="monthly">Monthly</option>
-                            <option value="annual">Annual</option>
-                          </select>
-                          <button
-                            onClick={() => deleteBusiness(b.id, b.name)}
-                            disabled={updating === b.id}
-                            className="rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-40"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {businesses.map((b, i) => {
+                    const rev = b.plan === "monthly" ? MONTHLY_PRICE : b.plan === "annual" ? ANNUAL_PRICE : 0;
+                    return (
+                      <tr key={b.id} className={`border-b border-white/5 ${i % 2 === 0 ? "bg-navy/40" : "bg-navy-muted/20"}`}>
+                        <td className="px-4 py-3 font-medium text-white">{b.name}</td>
+                        <td className="px-4 py-3 text-text-muted text-xs">{b.owner_phone}</td>
+                        <td className="px-4 py-3"><PlanBadge plan={b.plan} /></td>
+                        <td className="px-4 py-3 text-white font-semibold">{b.scans ?? 0}</td>
+                        <td className="px-4 py-3 text-accent font-semibold">{b.reviews ?? 0}</td>
+                        <td className="px-4 py-3 text-green-400 font-semibold text-xs">
+                          {rev > 0 ? formatINR(rev) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-text-muted text-xs">
+                          {b.created_at ? new Date(b.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={b.plan ?? "free"}
+                              disabled={updating === b.id}
+                              onChange={e => changePlan(b.id, e.target.value)}
+                              className="rounded-lg border border-white/15 bg-navy/80 px-2 py-1 text-xs text-white outline-none focus:border-accent/50"
+                            >
+                              <option value="free">Free</option>
+                              <option value="monthly">Monthly</option>
+                              <option value="annual">Annual</option>
+                            </select>
+                            <button
+                              onClick={() => deleteBusiness(b.id, b.name)}
+                              disabled={updating === b.id}
+                              className="rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-40"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {businesses.length === 0 && (
@@ -191,6 +235,7 @@ export default function AdminPage() {
             </div>
           </section>
         )}
+
       </div>
     </div>
   );
