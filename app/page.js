@@ -42,8 +42,11 @@ export default function LandingPage() {
             <span className="text-base font-semibold tracking-tight text-white">InsightRep</span>
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">
-            <Link href="/login" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
-              Owner login
+  <Link href="/demo" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
+    Live demo
+  </Link>
+  <Link href="/login" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
+    Owner login
             </Link>
             <Link href="/login" className="rounded-full bg-accent px-3 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(255,59,92,0.25)] transition hover:brightness-110 sm:px-4">
               Get started
