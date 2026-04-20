@@ -91,6 +91,7 @@ export default function CustomerReviewPage() {
   const [selected, setSelected] = useState(0);
   const [step, setStep] = useState("loading");
   const [genError, setGenError] = useState("");
+  const [limitReached, setLimitReached] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -111,7 +112,7 @@ export default function CustomerReviewPage() {
         setBusiness(data.business);
         setStep("rating");
 
-        // ✅ #1 — Track QR scan (silent)
+        // Track QR scan (silent)
         fetch("/api/business/scan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -137,6 +138,7 @@ export default function CustomerReviewPage() {
   async function generate() {
     if (!rating || rating < 3) return;
     setGenError("");
+    setLimitReached(false);
     setBusy(true);
     setStep("generating");
     try {
@@ -147,7 +149,12 @@ export default function CustomerReviewPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setGenError(data.message ?? "Generation failed.");
+        if (data.limitReached) {
+          setLimitReached(true);
+          setGenError("This business has reached its free plan limit for this month. The owner needs to upgrade to continue.");
+        } else {
+          setGenError(data.message ?? "Generation failed.");
+        }
         setStep("aspects");
         return;
       }
@@ -171,7 +178,7 @@ export default function CustomerReviewPage() {
       return;
     }
 
-    // ✅ #2 — Track review copy (silent)
+    // Track review copy (silent)
     fetch("/api/business/track-review", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -235,10 +242,19 @@ export default function CustomerReviewPage() {
                 );
               })}
             </div>
-            {genError ? <p className="text-sm text-accent" role="alert">{genError}</p> : null}
+
+            {limitReached ? (
+              <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5 text-center space-y-2">
+                <p className="text-sm font-semibold text-accent">Monthly limit reached</p>
+                <p className="text-xs text-text-muted">This business has used all 10 free AI reviews this month. The owner needs to upgrade to the monthly plan to continue.</p>
+              </div>
+            ) : null}
+
+            {genError && !limitReached ? <p className="text-sm text-accent" role="alert">{genError}</p> : null}
+
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || limitReached}
               onClick={generate}
               className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white disabled:opacity-50"
             >
