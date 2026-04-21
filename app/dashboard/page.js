@@ -28,7 +28,7 @@ function QRDownloadCard({ reviewUrl, businessName }) {
   );
 }
 
-function OnboardingChecklist({ stats, onDownloadQR, reviewUrl }) {
+function OnboardingChecklist({ stats, onDownloadQR, reviewUrl, business, router }) {
   const steps = [
     {
       id: 1,
@@ -38,20 +38,28 @@ function OnboardingChecklist({ stats, onDownloadQR, reviewUrl }) {
     },
     {
       id: 2,
+      label: "Complete your personal profile",
+      done: !!(business?.owner_name && business?.owner_designation && business?.owner_city),
+      action: () => router.push("/profile"),
+      actionLabel: "Complete now",
+      hint: "Add your name, role and city",
+    },
+    {
+      id: 3,
       label: "Download your QR code",
       done: false,
       action: onDownloadQR,
       actionLabel: "Download now",
     },
     {
-      id: 3,
+      id: 4,
       label: "Place QR at your counter or table",
       done: false,
       action: null,
       hint: "Print it and stick it where customers can see it",
     },
     {
-      id: 4,
+      id: 5,
       label: "Get your first QR scan",
       done: stats.scans > 0,
       action: reviewUrl ? () => navigator.clipboard.writeText(reviewUrl).catch(() => {}) : null,
@@ -59,7 +67,7 @@ function OnboardingChecklist({ stats, onDownloadQR, reviewUrl }) {
       hint: "Share your review link on WhatsApp to get your first scan",
     },
     {
-      id: 5,
+      id: 6,
       label: "Get your first Google review",
       done: stats.reviews > 0,
       hint: "Once a customer scans and posts, you are live!",
@@ -84,7 +92,6 @@ function OnboardingChecklist({ stats, onDownloadQR, reviewUrl }) {
         </div>
       </div>
 
-      {/* Progress bar */}
       <div className="h-1.5 w-full rounded-full bg-white/10">
         <div
           className="h-1.5 rounded-full bg-accent transition-all duration-500"
@@ -139,11 +146,11 @@ function PricingSection({ currentPlan }) {
         <div className={`rounded-2xl border p-6 space-y-4 ${currentPlan === 'monthly' ? 'border-accent bg-accent/10' : 'border-white/10 bg-navy-muted/40'}`}>
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">Starter</p>
-            <p className="mt-1 text-3xl font-extrabold text-white">₹1,499<span className="text-base font-medium text-text-muted">/mo</span></p>
-            <p className="text-xs text-text-muted mt-1">₹49 per day · Cancel anytime</p>
+            <p className="mt-1 text-3xl font-extrabold text-white">Rs.1,499<span className="text-base font-medium text-text-muted">/mo</span></p>
+            <p className="text-xs text-text-muted mt-1">Rs.49 per day · Cancel anytime</p>
           </div>
           <ul className="space-y-2 text-sm text-text-muted">
-            {["Unlimited QR scans", "AI review generation", "3–5 star filter", "Dashboard analytics", "Weekly email report", "PNG QR download"].map(f => (
+            {["Unlimited QR scans", "AI review generation", "3-5 star filter", "Dashboard analytics", "Weekly email report", "PNG QR download"].map(f => (
               <li key={f} className="flex items-center gap-2"><span className="text-accent">✓</span>{f}</li>
             ))}
           </ul>
@@ -157,16 +164,16 @@ function PricingSection({ currentPlan }) {
           <div className="absolute top-3 right-3 bg-accent text-white text-[10px] font-bold px-2 py-1 rounded-full tracking-wide">BEST VALUE</div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-accent">Annual</p>
-            <p className="mt-1 text-3xl font-extrabold text-white">₹12,990<span className="text-base font-medium text-text-muted">/yr</span></p>
-            <p className="text-xs text-accent mt-1 font-semibold">3 months FREE · Save ₹4,998</p>
-            <p className="text-xs text-text-muted">₹35 per day</p>
+            <p className="mt-1 text-3xl font-extrabold text-white">Rs.12,990<span className="text-base font-medium text-text-muted">/yr</span></p>
+            <p className="text-xs text-accent mt-1 font-semibold">3 months FREE · Save Rs.4,998</p>
+            <p className="text-xs text-text-muted">Rs.35 per day</p>
           </div>
           <ul className="space-y-2 text-sm text-text-muted">
             {["Everything in Starter", "3 extra months free", "Priority WhatsApp support", "Founding member rate locked"].map(f => (
               <li key={f} className="flex items-center gap-2"><span className="text-accent">✓</span>{f}</li>
             ))}
           </ul>
-          <p className="text-center text-xs text-text-muted">Save ₹4,998 · Free setup call included</p>
+          <p className="text-center text-xs text-text-muted">Save Rs.4,998 · Free setup call included</p>
           <button disabled className="w-full rounded-full bg-accent py-2.5 text-sm font-semibold text-white cursor-not-allowed opacity-60">
             {currentPlan === 'annual' ? 'Current Plan' : 'Coming Soon'}
           </button>
@@ -271,6 +278,9 @@ export default function DashboardPage() {
           <div>
             <p className="text-sm font-medium text-accent">Dashboard</p>
             <h1 className="text-2xl font-bold text-white">{business.name}</h1>
+            {business.owner_name && (
+              <p className="text-xs text-text-muted mt-0.5">{business.owner_name} · {business.owner_designation}</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Link href="/setup" className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-text-muted transition hover:border-white/30 hover:text-white">
@@ -283,12 +293,14 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Onboarding Checklist — shows only when scans = 0 or reviews = 0 */}
-        {(stats.scans === 0 || stats.reviews === 0) && (
+        {/* Onboarding Checklist */}
+        {(stats.scans === 0 || stats.reviews === 0 || !(business?.owner_name && business?.owner_designation && business?.owner_city)) && (
           <OnboardingChecklist
             stats={stats}
             onDownloadQR={downloadQR}
             reviewUrl={reviewUrl}
+            business={business}
+            router={router}
           />
         )}
 
@@ -325,7 +337,7 @@ export default function DashboardPage() {
             </div>
             <button type="button" onClick={downloadQR} disabled={downloading}
               className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50">
-              {downloading ? "Generating…" : "⬇ Download QR (PNG)"}
+              {downloading ? "Generating…" : "Download QR (PNG)"}
             </button>
           </div>
 
@@ -338,6 +350,12 @@ export default function DashboardPage() {
               <p className="text-xs text-text-muted uppercase tracking-wide mb-1">Member since</p>
               <p className="text-accent font-semibold">{formatCreatedAt(business.created_at)}</p>
             </div>
+            {business.owner_city && (
+              <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6">
+                <p className="text-xs text-text-muted uppercase tracking-wide mb-1">City</p>
+                <p className="text-white font-semibold">{business.owner_city}</p>
+              </div>
+            )}
           </div>
         </section>
 
