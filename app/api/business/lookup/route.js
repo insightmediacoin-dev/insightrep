@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import { isValidOwnerIdentifier } from "@/lib/phone";
 
 const BUSINESS_COLUMNS =
-  "id, created_at, owner_phone, name, address, gmb_link, keywords, products, plan";
+  "id, created_at, owner_phone, name, address, gmb_link, keywords, products, plan, owner_name, owner_designation, owner_city, owner_whatsapp";
 
 export async function GET(request) {
   const admin = createAdminClient();
