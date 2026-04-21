@@ -28,13 +28,114 @@ function QRDownloadCard({ reviewUrl, businessName }) {
   );
 }
 
+function OnboardingChecklist({ stats, onDownloadQR, reviewUrl }) {
+  const steps = [
+    {
+      id: 1,
+      label: "Business profile created",
+      done: true,
+      action: null,
+    },
+    {
+      id: 2,
+      label: "Download your QR code",
+      done: false,
+      action: onDownloadQR,
+      actionLabel: "Download now",
+    },
+    {
+      id: 3,
+      label: "Place QR at your counter or table",
+      done: false,
+      action: null,
+      hint: "Print it and stick it where customers can see it",
+    },
+    {
+      id: 4,
+      label: "Get your first QR scan",
+      done: stats.scans > 0,
+      action: reviewUrl ? () => navigator.clipboard.writeText(reviewUrl).catch(() => {}) : null,
+      actionLabel: "Copy review link",
+      hint: "Share your review link on WhatsApp to get your first scan",
+    },
+    {
+      id: 5,
+      label: "Get your first Google review",
+      done: stats.reviews > 0,
+      hint: "Once a customer scans and posts, you are live!",
+    },
+  ];
+
+  const completedCount = steps.filter(s => s.done).length;
+  const allDone = completedCount === steps.length;
+
+  if (allDone) return null;
+
+  return (
+    <section className="rounded-2xl border border-accent/20 bg-accent/5 p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Getting started</p>
+          <h2 className="text-lg font-bold text-white mt-1">Complete your setup</h2>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-extrabold text-accent">{completedCount}/{steps.length}</p>
+          <p className="text-xs text-text-muted">steps done</p>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1.5 w-full rounded-full bg-white/10">
+        <div
+          className="h-1.5 rounded-full bg-accent transition-all duration-500"
+          style={{ width: `${(completedCount / steps.length) * 100}%` }}
+        />
+      </div>
+
+      <ul className="space-y-3">
+        {steps.map((step) => (
+          <li key={step.id} className="flex items-start gap-3">
+            <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+              step.done ? "bg-green-500 text-white" : "border border-white/20 text-text-muted"
+            }`}>
+              {step.done ? "✓" : step.id}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium ${step.done ? "text-text-muted line-through" : "text-white"}`}>
+                {step.label}
+              </p>
+              {step.hint && !step.done && (
+                <p className="text-xs text-text-muted mt-0.5">{step.hint}</p>
+              )}
+            </div>
+            {step.action && !step.done && (
+              <button
+                type="button"
+                onClick={step.action}
+                className="shrink-0 rounded-full border border-accent/30 px-3 py-1 text-xs font-semibold text-accent hover:bg-accent/10"
+              >
+                {step.actionLabel}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <p className="text-xs text-text-muted text-center pt-2">
+        Need help? WhatsApp us at{" "}
+        <a href="https://wa.me/917387609098" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+          +91 73876 09098
+        </a>
+      </p>
+    </section>
+  );
+}
+
 function PricingSection({ currentPlan }) {
   return (
     <section className="space-y-4">
       <h2 className="text-lg font-bold text-white">Plans & Pricing</h2>
       <div className="grid gap-4 sm:grid-cols-2">
-
-        {/* Monthly */}
         <div className={`rounded-2xl border p-6 space-y-4 ${currentPlan === 'monthly' ? 'border-accent bg-accent/10' : 'border-white/10 bg-navy-muted/40'}`}>
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">Starter</p>
@@ -46,12 +147,12 @@ function PricingSection({ currentPlan }) {
               <li key={f} className="flex items-center gap-2"><span className="text-accent">✓</span>{f}</li>
             ))}
           </ul>
+          <p className="text-center text-xs text-text-muted">No contract · Cancel anytime with 7 days notice</p>
           <button disabled className="w-full rounded-full border border-white/15 py-2.5 text-sm font-semibold text-text-muted cursor-not-allowed opacity-60">
             {currentPlan === 'monthly' ? 'Current Plan' : 'Coming Soon'}
           </button>
         </div>
 
-        {/* Annual */}
         <div className={`rounded-2xl border p-6 space-y-4 relative overflow-hidden ${currentPlan === 'annual' ? 'border-accent bg-accent/10' : 'border-accent/40 bg-accent/5'}`}>
           <div className="absolute top-3 right-3 bg-accent text-white text-[10px] font-bold px-2 py-1 rounded-full tracking-wide">BEST VALUE</div>
           <div>
@@ -65,11 +166,11 @@ function PricingSection({ currentPlan }) {
               <li key={f} className="flex items-center gap-2"><span className="text-accent">✓</span>{f}</li>
             ))}
           </ul>
+          <p className="text-center text-xs text-text-muted">Save ₹4,998 · Free setup call included</p>
           <button disabled className="w-full rounded-full bg-accent py-2.5 text-sm font-semibold text-white cursor-not-allowed opacity-60">
             {currentPlan === 'annual' ? 'Current Plan' : 'Coming Soon'}
           </button>
         </div>
-
       </div>
       <p className="text-center text-xs text-text-muted">Payments coming soon via Razorpay · WhatsApp us to activate manually</p>
     </section>
@@ -171,12 +272,25 @@ export default function DashboardPage() {
             <p className="text-sm font-medium text-accent">Dashboard</p>
             <h1 className="text-2xl font-bold text-white">{business.name}</h1>
           </div>
-          <Link href="/setup" className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-text-muted transition hover:border-white/30 hover:text-white">Edit Profile</Link>
-          <button type="button" onClick={logout}
-            className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-text-muted transition hover:border-white/30 hover:text-white">
-            Logout
-          </button>
+          <div className="flex items-center gap-2">
+            <Link href="/setup" className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-text-muted transition hover:border-white/30 hover:text-white">
+              Edit Profile
+            </Link>
+            <button type="button" onClick={logout}
+              className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-text-muted transition hover:border-white/30 hover:text-white">
+              Logout
+            </button>
+          </div>
         </header>
+
+        {/* Onboarding Checklist — shows only when scans = 0 or reviews = 0 */}
+        {(stats.scans === 0 || stats.reviews === 0) && (
+          <OnboardingChecklist
+            stats={stats}
+            onDownloadQR={downloadQR}
+            reviewUrl={reviewUrl}
+          />
+        )}
 
         {/* Address */}
         <section className="rounded-2xl border border-white/10 bg-navy-muted/40 p-5">
