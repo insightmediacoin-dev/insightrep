@@ -31,6 +31,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [updating, setUpdating] = useState(null);
+  const [expanded, setExpanded] = useState(null);
 
   function login() {
     if (password === ADMIN_PASSWORD) { setAuthed(true); setPwError(""); }
@@ -79,7 +80,6 @@ export default function AdminPage() {
 
   useEffect(() => { if (authed) loadBusinesses(); }, [authed]);
 
-  // Revenue calculations
   const monthlyCount = businesses.filter(b => b.plan === "monthly").length;
   const annualCount = businesses.filter(b => b.plan === "annual").length;
   const mrr = (monthlyCount * MONTHLY_PRICE) + (annualCount * Math.round(ANNUAL_PRICE / 12));
@@ -119,7 +119,7 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
           </div>
           <button onClick={loadBusinesses} className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-text-muted hover:text-white">
-            ↻ Refresh
+            Refresh
           </button>
         </header>
 
@@ -178,7 +178,9 @@ export default function AdminPage() {
                 <thead>
                   <tr className="border-b border-white/10 bg-navy-muted/60 text-left text-xs uppercase tracking-widest text-text-muted">
                     <th className="px-4 py-3">Business</th>
+                    <th className="px-4 py-3">Contact</th>
                     <th className="px-4 py-3">Owner</th>
+                    <th className="px-4 py-3">City</th>
                     <th className="px-4 py-3">Plan</th>
                     <th className="px-4 py-3">Scans</th>
                     <th className="px-4 py-3">Reviews</th>
@@ -190,41 +192,94 @@ export default function AdminPage() {
                 <tbody>
                   {businesses.map((b, i) => {
                     const rev = b.plan === "monthly" ? MONTHLY_PRICE : b.plan === "annual" ? ANNUAL_PRICE : 0;
+                    const isExpanded = expanded === b.id;
                     return (
-                      <tr key={b.id} className={`border-b border-white/5 ${i % 2 === 0 ? "bg-navy/40" : "bg-navy-muted/20"}`}>
-                        <td className="px-4 py-3 font-medium text-white">{b.name}</td>
-                        <td className="px-4 py-3 text-text-muted text-xs">{b.owner_phone}</td>
-                        <td className="px-4 py-3"><PlanBadge plan={b.plan} /></td>
-                        <td className="px-4 py-3 text-white font-semibold">{b.scans ?? 0}</td>
-                        <td className="px-4 py-3 text-accent font-semibold">{b.reviews ?? 0}</td>
-                        <td className="px-4 py-3 text-green-400 font-semibold text-xs">
-                          {rev > 0 ? formatINR(rev) : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-text-muted text-xs">
-                          {b.created_at ? new Date(b.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={b.plan ?? "free"}
-                              disabled={updating === b.id}
-                              onChange={e => changePlan(b.id, e.target.value)}
-                              className="rounded-lg border border-white/15 bg-navy/80 px-2 py-1 text-xs text-white outline-none focus:border-accent/50"
-                            >
-                              <option value="free">Free</option>
-                              <option value="monthly">Monthly</option>
-                              <option value="annual">Annual</option>
-                            </select>
+                      <>
+                        <tr key={b.id} className={`border-b border-white/5 ${i % 2 === 0 ? "bg-navy/40" : "bg-navy-muted/20"}`}>
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-white">{b.name}</p>
                             <button
-                              onClick={() => deleteBusiness(b.id, b.name)}
-                              disabled={updating === b.id}
-                              className="rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-40"
+                              type="button"
+                              onClick={() => setExpanded(isExpanded ? null : b.id)}
+                              className="text-[10px] text-accent hover:underline mt-0.5"
                             >
-                              Delete
+                              {isExpanded ? "Hide details" : "View details"}
                             </button>
-                          </div>
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="px-4 py-3 text-text-muted text-xs">{b.owner_phone}</td>
+                          <td className="px-4 py-3">
+                            <p className="text-white text-xs font-medium">{b.owner_name ?? "—"}</p>
+                            <p className="text-text-muted text-[10px]">{b.owner_designation ?? ""}</p>
+                          </td>
+                          <td className="px-4 py-3 text-text-muted text-xs">{b.owner_city ?? "—"}</td>
+                          <td className="px-4 py-3"><PlanBadge plan={b.plan} /></td>
+                          <td className="px-4 py-3 text-white font-semibold">{b.scans ?? 0}</td>
+                          <td className="px-4 py-3 text-accent font-semibold">{b.reviews ?? 0}</td>
+                          <td className="px-4 py-3 text-green-400 font-semibold text-xs">
+                            {rev > 0 ? formatINR(rev) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-text-muted text-xs">
+                            {b.created_at ? new Date(b.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={b.plan ?? "free"}
+                                disabled={updating === b.id}
+                                onChange={e => changePlan(b.id, e.target.value)}
+                                className="rounded-lg border border-white/15 bg-navy/80 px-2 py-1 text-xs text-white outline-none focus:border-accent/50"
+                              >
+                                <option value="free">Free</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="annual">Annual</option>
+                              </select>
+                              <button
+                                onClick={() => deleteBusiness(b.id, b.name)}
+                                disabled={updating === b.id}
+                                className="rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-40"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Expanded details row */}
+                        {isExpanded && (
+                          <tr key={`${b.id}-details`} className="border-b border-white/5 bg-navy-muted/40">
+                            <td colSpan={10} className="px-4 py-4">
+                              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 text-xs">
+                                <div>
+                                  <p className="text-text-muted uppercase tracking-wide font-semibold mb-1">WhatsApp</p>
+                                  {b.owner_whatsapp ? (
+                                    <a href={`https://wa.me/91${b.owner_whatsapp}`} target="_blank" rel="noopener noreferrer"
+                                      className="text-accent hover:underline">
+                                      +91 {b.owner_whatsapp}
+                                    </a>
+                                  ) : <p className="text-text-muted">—</p>}
+                                </div>
+                                <div>
+                                  <p className="text-text-muted uppercase tracking-wide font-semibold mb-1">Address</p>
+                                  <p className="text-white">{b.address || "—"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-text-muted uppercase tracking-wide font-semibold mb-1">Google Review Link</p>
+                                  {b.gmb_link ? (
+                                    <a href={b.gmb_link} target="_blank" rel="noopener noreferrer"
+                                      className="text-accent hover:underline break-all">
+                                      Open link
+                                    </a>
+                                  ) : <p className="text-text-muted">—</p>}
+                                </div>
+                                <div>
+                                  <p className="text-text-muted uppercase tracking-wide font-semibold mb-1">Keywords</p>
+                                  <p className="text-white">{b.keywords || "—"}</p>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     );
                   })}
                 </tbody>
