@@ -43,11 +43,11 @@ export default function LandingPage() {
             <span className="text-base font-semibold tracking-tight text-white">InsightRep</span>
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">
-  <Link href="/demo" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
-    Live demo
-  </Link>
-  <Link href="/login" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
-    Owner login
+            <Link href="/demo" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
+              Live demo
+            </Link>
+            <Link href="/login" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
+              Owner login
             </Link>
             <Link href="/login" className="rounded-full bg-accent px-3 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(255,59,92,0.25)] transition hover:brightness-110 sm:px-4">
               Get started
@@ -66,7 +66,7 @@ export default function LandingPage() {
             <div className="flex-1 space-y-6">
               <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-wider text-text-muted">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                Built for India · Restaurants · Cafés · Hotels
+                Built for India · Restaurants · Cafes · Hotels
               </p>
               <h1 className="text-balance text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl sm:leading-tight lg:text-5xl lg:leading-[1.1]">
                 Turn great visits into{" "}
@@ -85,7 +85,7 @@ export default function LandingPage() {
               </div>
               <dl className="grid grid-cols-3 gap-3 pt-2 sm:max-w-md sm:gap-4">
                 {[
-                  { k: "Stars", v: "3–5 only" },
+                  { k: "Stars", v: "3-5 only" },
                   { k: "Drafts", v: "3 AI options" },
                   { k: "End", v: "Google link" },
                 ].map((item) => (
@@ -115,19 +115,19 @@ export default function LandingPage() {
                       </span>
                     ))}
                   </div>
-                  <p className="text-center text-[11px] text-text-muted">Only 3–5★ flows — we keep the experience positive.</p>
+                  <p className="text-center text-[11px] text-text-muted">Only 3-5 star flows — we keep the experience positive.</p>
                   <div className="space-y-2 border-t border-white/10 pt-3">
                     <p className="text-xs font-medium text-text-muted">Quick questions</p>
                     {["Food quality", "Service", "Would recommend"].map((q) => (
                       <div key={q} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-xs text-white/90">
                         <span>{q}</span>
-                        <span className="text-accent">···</span>
+                        <span className="text-accent">...</span>
                       </div>
                     ))}
                   </div>
                   <div className="rounded-lg border border-dashed border-accent/40 bg-accent/5 p-3">
                     <p className="text-[10px] font-medium uppercase tracking-wide text-accent">AI drafts</p>
-                    <p className="mt-1 text-xs leading-relaxed text-text-muted">"Warm service, standout butter chicken, will book the terrace again…"</p>
+                    <p className="mt-1 text-xs leading-relaxed text-text-muted">"Warm service, standout butter chicken, will book the terrace again..."</p>
                   </div>
                   <div className="flex gap-2 pt-1">
                     <span className="flex-1 rounded-lg bg-white/10 py-2 text-center text-xs font-medium text-white/80">Copy review</span>
@@ -168,7 +168,7 @@ export default function LandingPage() {
               <div className="rounded-2xl border border-white/10 bg-navy p-5 sm:p-6">
                 <div className="mb-5 flex items-center gap-2">
                   <span className="rounded-lg bg-white/10 px-2 py-1 text-xs font-semibold text-white">Customer</span>
-                  <h3 className="text-lg font-semibold text-white">Scan → post</h3>
+                  <h3 className="text-lg font-semibold text-white">Scan to post</h3>
                 </div>
                 <ol className="space-y-4">
                   {stepsCustomer.map((s, i) => (
@@ -219,18 +219,18 @@ export default function LandingPage() {
               <p className="mt-3 text-text-muted text-sm sm:text-base">Less than a cup of chai per day — results that pay for themselves in Week 1.</p>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 max-w-3xl mx-auto">
-
               <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 space-y-5">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">Starter</p>
-                  <p className="mt-2 text-4xl font-extrabold text-white">₹1,499<span className="text-base font-medium text-text-muted">/mo</span></p>
-                  <p className="text-xs text-text-muted mt-1">₹49 per day · Cancel anytime</p>
+                  <p className="mt-2 text-4xl font-extrabold text-white">Rs.1,499<span className="text-base font-medium text-text-muted">/mo</span></p>
+                  <p className="text-xs text-text-muted mt-1">Rs.49 per day · Cancel anytime</p>
                 </div>
                 <ul className="space-y-2 text-sm text-text-muted">
-                  {["Unlimited QR scans", "AI review generation", "3–5 star filter only", "SEO keyword embedding", "Dashboard analytics", "Weekly email report", "PNG QR download"].map(f => (
+                  {["Unlimited QR scans", "AI review generation", "3-5 star filter only", "SEO keyword embedding", "Dashboard analytics", "Weekly email report", "PNG QR download"].map(f => (
                     <li key={f} className="flex items-center gap-2"><span className="text-accent font-bold">✓</span>{f}</li>
                   ))}
                 </ul>
+                <p className="text-center text-xs text-text-muted">No contract · Cancel anytime with 7 days notice</p>
                 <Link href="/login" className="flex h-11 w-full items-center justify-center rounded-full border border-white/15 text-sm font-semibold text-white transition hover:border-accent hover:text-accent">
                   Get started →
                 </Link>
@@ -240,22 +240,83 @@ export default function LandingPage() {
                 <div className="absolute top-4 right-4 bg-accent text-white text-[10px] font-bold px-2 py-1 rounded-full tracking-wide">BEST VALUE</div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-accent">Annual</p>
-                  <p className="mt-2 text-4xl font-extrabold text-white">₹12,990<span className="text-base font-medium text-text-muted">/yr</span></p>
-                  <p className="text-xs text-accent font-semibold mt-1">3 months FREE · Save ₹4,998</p>
-                  <p className="text-xs text-text-muted">₹35 per day</p>
+                  <p className="mt-2 text-4xl font-extrabold text-white">Rs.12,990<span className="text-base font-medium text-text-muted">/yr</span></p>
+                  <p className="text-xs text-accent font-semibold mt-1">3 months FREE · Save Rs.4,998</p>
+                  <p className="text-xs text-text-muted">Rs.35 per day</p>
                 </div>
                 <ul className="space-y-2 text-sm text-text-muted">
                   {["Everything in Starter", "3 extra months free", "Priority WhatsApp support", "Founding member rate locked forever"].map(f => (
                     <li key={f} className="flex items-center gap-2"><span className="text-accent font-bold">✓</span>{f}</li>
                   ))}
                 </ul>
+                <p className="text-center text-xs text-text-muted">Save Rs.4,998 · Free setup call included</p>
                 <Link href="/login" className="flex h-11 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white shadow-[0_8px_24px_rgba(255,59,92,0.3)] transition hover:brightness-110">
                   Get started →
                 </Link>
               </div>
-
             </div>
             <p className="text-center text-xs text-text-muted mt-6">Payments via Razorpay coming soon · WhatsApp us to activate manually</p>
+          </div>
+        </section>
+
+        {/* Standee Add-ons */}
+        <section className="border-t border-white/5 px-4 py-14 sm:px-6 sm:py-20">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-10 text-center">
+              <p className="text-xs font-semibold uppercase tracking-widest text-accent mb-2">Add-ons</p>
+              <h2 className="text-2xl font-bold text-white sm:text-3xl">Printed QR Standees</h2>
+              <p className="mt-3 text-text-muted text-sm sm:text-base">Premium printed standees — branded with your business name. Delivered in 3-5 working days.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3 max-w-4xl mx-auto">
+
+              <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 space-y-4 text-center">
+                <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">Single</p>
+                <p className="text-3xl font-extrabold text-white">Rs.149</p>
+                <p className="text-xs text-text-muted">1 standee · Rs.149/piece</p>
+                <ul className="space-y-1 text-xs text-text-muted text-left">
+                  <li className="flex items-center gap-2"><span className="text-accent">✓</span>1 branded QR standee</li>
+                  <li className="flex items-center gap-2"><span className="text-accent">✓</span>Ready to place at counter</li>
+                  <li className="flex items-center gap-2"><span className="text-accent">✓</span>Sturdy and reusable</li>
+                </ul>
+                <a href="https://wa.me/917387609098?text=I%20want%20to%20order%201%20QR%20standee" target="_blank" rel="noopener noreferrer"
+                  className="flex h-10 w-full items-center justify-center rounded-full border border-white/15 text-xs font-semibold text-white hover:border-accent hover:text-accent transition">
+                  Order on WhatsApp
+                </a>
+              </div>
+
+              <div className="rounded-2xl border border-accent/40 bg-accent/5 p-6 space-y-4 text-center relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full">POPULAR</div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-accent">Set of 5</p>
+                <p className="text-3xl font-extrabold text-white">Rs.596</p>
+                <p className="text-xs text-accent font-semibold">Buy 4 get 1 FREE · Rs.119/piece</p>
+                <ul className="space-y-1 text-xs text-text-muted text-left">
+                  <li className="flex items-center gap-2"><span className="text-accent">✓</span>5 branded QR standees</li>
+                  <li className="flex items-center gap-2"><span className="text-accent">✓</span>Cover every table and counter</li>
+                  <li className="flex items-center gap-2"><span className="text-accent">✓</span>1 standee FREE</li>
+                </ul>
+                <a href="https://wa.me/917387609098?text=I%20want%20to%20order%20set%20of%205%20QR%20standees" target="_blank" rel="noopener noreferrer"
+                  className="flex h-10 w-full items-center justify-center rounded-full bg-accent text-xs font-semibold text-white hover:brightness-110 transition">
+                  Order on WhatsApp
+                </a>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 space-y-4 text-center">
+                <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">Set of 10</p>
+                <p className="text-3xl font-extrabold text-white">Rs.1,043</p>
+                <p className="text-xs text-green-400 font-semibold">Buy 7 get 3 FREE · Rs.104/piece</p>
+                <ul className="space-y-1 text-xs text-text-muted text-left">
+                  <li className="flex items-center gap-2"><span className="text-accent">✓</span>10 branded QR standees</li>
+                  <li className="flex items-center gap-2"><span className="text-accent">✓</span>Full restaurant coverage</li>
+                  <li className="flex items-center gap-2"><span className="text-accent">✓</span>3 standees FREE</li>
+                </ul>
+                <a href="https://wa.me/917387609098?text=I%20want%20to%20order%20set%20of%2010%20QR%20standees" target="_blank" rel="noopener noreferrer"
+                  className="flex h-10 w-full items-center justify-center rounded-full border border-white/15 text-xs font-semibold text-white hover:border-accent hover:text-accent transition">
+                  Order on WhatsApp
+                </a>
+              </div>
+
+            </div>
+            <p className="text-center text-xs text-text-muted mt-6">Available to all InsightRep subscribers · WhatsApp us to order · Delivered in 3-5 working days</p>
           </div>
         </section>
 
@@ -276,11 +337,11 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center text-xs text-text-muted sm:flex-row sm:text-left">
           <p>© {new Date().getFullYear()} InsightRep. Made for Indian hospitality.</p>
           <div className="flex gap-4">
-          <Link href="/login" className="hover:text-white">Owners</Link>
-<span className="text-white/20">|</span>
-<Link href="/legal" className="hover:text-white">Terms & Privacy</Link>
-<span className="text-white/20">|</span>
-<span>Customers use your QR — no app install.</span>
+            <Link href="/login" className="hover:text-white">Owners</Link>
+            <span className="text-white/20">|</span>
+            <Link href="/legal" className="hover:text-white">Terms & Privacy</Link>
+            <span className="text-white/20">|</span>
+            <span>Customers use your QR — no app install.</span>
           </div>
         </div>
       </footer>
