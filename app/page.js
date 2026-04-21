@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ROICalculator from "./components/ROICalculator";
+import FAQSection from "./components/FAQSection";
 
 const stepsOwner = [
   {
@@ -268,7 +269,6 @@ export default function LandingPage() {
               <p className="mt-3 text-text-muted text-sm sm:text-base">Premium printed standees — branded with your business name. Delivered in 3-5 working days.</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-3 max-w-4xl mx-auto">
-
               <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 space-y-4 text-center">
                 <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">Single</p>
                 <p className="text-3xl font-extrabold text-white">Rs.149</p>
@@ -314,11 +314,13 @@ export default function LandingPage() {
                   Order on WhatsApp
                 </a>
               </div>
-
             </div>
             <p className="text-center text-xs text-text-muted mt-6">Available to all InsightRep subscribers · WhatsApp us to order · Delivered in 3-5 working days</p>
           </div>
         </section>
+
+        {/* FAQ */}
+        <FAQSection />
 
         {/* CTA */}
         <section className="border-t border-white/5 px-4 py-14 sm:px-6 sm:py-20">
