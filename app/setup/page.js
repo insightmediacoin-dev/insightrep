@@ -9,21 +9,21 @@ import {
 } from "@/lib/phone";
 
 const BUSINESS_TYPES = [
-  { value: "restaurant", label: "Restaurant", chips: ["Food", "Service", "Ambiance", "Value for money"] },
-  { value: "cafe", label: "Cafe / Coffee Shop", chips: ["Coffee", "Food", "Ambiance", "Service"] },
-  { value: "hotel", label: "Hotel / Resort", chips: ["Rooms", "Service", "Cleanliness", "Location"] },
-  { value: "bar", label: "Bar / Lounge / Nightclub", chips: ["Drinks", "Ambiance", "Service", "Music"] },
-  { value: "bakery", label: "Bakery / Sweet Shop", chips: ["Products", "Taste", "Freshness", "Service"] },
-  { value: "fastfood", label: "Fast Food / QSR", chips: ["Food", "Speed", "Value", "Service"] },
-  { value: "dhaba", label: "Dhaba / Street Food", chips: ["Food", "Taste", "Value", "Vibe"] },
-  { value: "salon", label: "Salon / Spa / Beauty", chips: ["Service", "Staff", "Cleanliness", "Value"] },
-  { value: "gym", label: "Gym / Fitness Center", chips: ["Equipment", "Trainers", "Cleanliness", "Membership"] },
-  { value: "retail", label: "Retail Shop / Showroom", chips: ["Products", "Service", "Pricing", "Experience"] },
-  { value: "clinic", label: "Clinic / Hospital / Pharmacy", chips: ["Doctor", "Staff", "Cleanliness", "Service"] },
-  { value: "agency", label: "Agency / Professional Services", chips: ["Service", "Professionalism", "Results", "Communication"] },
-  { value: "education", label: "School / Coaching / Institute", chips: ["Teaching", "Faculty", "Facilities", "Results"] },
-  { value: "travel", label: "Travel / Tour Operator", chips: ["Service", "Experience", "Value", "Guide"] },
-  { value: "other", label: "Other (specify below)", chips: ["Service", "Quality", "Experience", "Value"] },
+  { value: "restaurant", label: "Restaurant", category: "food", chips: ["Food", "Service", "Ambiance", "Value for money"] },
+  { value: "cafe", label: "Cafe / Coffee Shop", category: "food", chips: ["Coffee", "Food", "Ambiance", "Service"] },
+  { value: "hotel", label: "Hotel / Resort", category: "hospitality", chips: ["Rooms", "Service", "Cleanliness", "Location"] },
+  { value: "bar", label: "Bar / Lounge / Nightclub", category: "hospitality", chips: ["Drinks", "Ambiance", "Service", "Music"] },
+  { value: "bakery", label: "Bakery / Sweet Shop", category: "food", chips: ["Products", "Taste", "Freshness", "Service"] },
+  { value: "fastfood", label: "Fast Food / QSR", category: "food", chips: ["Food", "Speed", "Value", "Service"] },
+  { value: "dhaba", label: "Dhaba / Street Food", category: "food", chips: ["Food", "Taste", "Value", "Vibe"] },
+  { value: "salon", label: "Salon / Spa / Beauty", category: "beauty", chips: ["Service", "Staff", "Cleanliness", "Value"] },
+  { value: "gym", label: "Gym / Fitness Center", category: "fitness", chips: ["Equipment", "Trainers", "Cleanliness", "Membership"] },
+  { value: "retail", label: "Retail Shop / Showroom", category: "retail", chips: ["Products", "Service", "Pricing", "Experience"] },
+  { value: "clinic", label: "Clinic / Hospital / Pharmacy", category: "healthcare", chips: ["Doctor", "Staff", "Cleanliness", "Service"] },
+  { value: "agency", label: "Agency / Professional Services", category: "agency", chips: ["Service", "Professionalism", "Results", "Communication"] },
+  { value: "education", label: "School / Coaching / Institute", category: "education", chips: ["Teaching", "Faculty", "Facilities", "Results"] },
+  { value: "travel", label: "Travel / Tour Operator", category: "travel", chips: ["Service", "Experience", "Value", "Guide"] },
+  { value: "other", label: "Other (specify below)", category: "other", chips: ["Service", "Quality", "Experience", "Value"] },
 ];
 
 export default function SetupPage() {
@@ -35,7 +35,7 @@ export default function SetupPage() {
   const [seoKeywords, setSeoKeywords] = useState("");
   const [featuredProducts, setFeaturedProducts] = useState("");
   const [businessType, setBusinessType] = useState("restaurant");
-  const [businessCategory, setBusinessCategory] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
   const [loading, setLoading] = useState(false);
   const [prefilling, setPrefilling] = useState(true);
   const [error, setError] = useState("");
@@ -63,7 +63,10 @@ export default function SetupPage() {
           setSeoKeywords(biz.keywords ?? "");
           setFeaturedProducts(biz.products ?? "");
           setBusinessType(biz.business_type ?? "restaurant");
-          setBusinessCategory(biz.business_category ?? "");
+          // If type is "other", restore the custom category
+          if (biz.business_type === "other") {
+            setCustomCategory(biz.business_category ?? "");
+          }
           setIsEdit(true);
           if (!id) localStorage.setItem(BUSINESS_ID_STORAGE_KEY, biz.id);
         }
@@ -78,6 +81,13 @@ export default function SetupPage() {
     setError("");
     if (!ownerIdentifier) return router.replace("/login");
     setLoading(true);
+
+    // Derive business_category from type — "other" uses custom input
+    const selectedType = BUSINESS_TYPES.find(t => t.value === businessType);
+    const business_category = businessType === "other"
+      ? customCategory.trim()
+      : selectedType?.category ?? businessType;
+
     try {
       const res = await fetch("/api/business/setup", {
         method: "POST",
@@ -90,7 +100,7 @@ export default function SetupPage() {
           keywords: seoKeywords,
           products: featuredProducts,
           business_type: businessType,
-          business_category: businessCategory,
+          business_category,
         }),
       });
       const data = await res.json();
@@ -175,7 +185,7 @@ export default function SetupPage() {
                 <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Specify your business type *</label>
                 <input
                   className="w-full rounded-xl border border-white/15 bg-navy/60 px-3 py-3 text-white outline-none focus:border-accent"
-                  value={businessCategory} onChange={e => setBusinessCategory(e.target.value)}
+                  value={customCategory} onChange={e => setCustomCategory(e.target.value)}
                   placeholder="e.g. Photography Studio, Law Firm, Gym" />
               </div>
             )}
