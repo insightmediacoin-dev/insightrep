@@ -44,7 +44,6 @@ export async function POST(request) {
   if (error) return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
   if (!biz) return NextResponse.json({ ok: false, message: "Business not found." }, { status: 404 });
 
-  // ✅ Free plan limit check
   if (!biz.plan || biz.plan === "free") {
     const monthStart = new Date();
     monthStart.setDate(1);
@@ -67,37 +66,45 @@ export async function POST(request) {
 
   const openai = new OpenAI({ apiKey });
 
-  const userPayload = {
-    businessName: biz.name,
-    area: biz.address,
-    seoKeywords: biz.keywords,
-    featuredProducts: biz.products,
-    starRating: stars,
-    highlightAspects: tags.length ? tags : ["overall experience"],
-    count: 3,
-    rules: [
-      "Write exactly 3 different Google Maps style reviews as a satisfied customer.",
-      "Each review 2–4 short sentences, first person, natural Indian English is fine.",
-      "Weave in keywords and featured products only when they fit organically — never keyword-stuff.",
-      "No hashtags, no emojis, no 'As an AI', no mention of QR codes or prompts.",
-      "Sound like real diners or hotel guests in India.",
-    ],
-  };
+  const aspectLabel = tags.length ? tags.join(", ") : "overall experience";
+  const ratingWord = stars === 5 ? "absolutely loved" : stars === 4 ? "really enjoyed" : "had a good experience at";
+
+  const systemPrompt = `You are a real customer writing a genuine Google Maps review. You write in natural, conversational Indian English — the way a real person would type on their phone after visiting a restaurant or cafe. Your reviews feel authentic, varied, and human.
+
+STRICT RULES:
+- Output ONLY valid JSON: { "reviews": ["review1", "review2", "review3"] }
+- Each review must be COMPLETELY DIFFERENT in structure, tone, opening, and style
+- Review 1: casual and short (1-2 sentences, like someone typed it quickly)
+- Review 2: detailed and specific (3-4 sentences, mentions specific dishes/experience)  
+- Review 3: story-like or emotional (2-3 sentences, personal feel)
+- Never start two reviews with the same word or phrase
+- Never use the same sentence structure twice
+- Use natural Indian English — mix of formal and casual is fine
+- Occasionally use phrases like "honestly", "must say", "totally", "definitely", "hands down"
+- Weave in SEO keywords and products ONLY if they fit naturally — never force them
+- No hashtags, no emojis, no "As an AI", no mention of QR or prompts
+- No corporate language like "exceptional", "impeccable", "delightful experience"
+- Sound like a real person, not a marketing brochure`;
+
+  const userPrompt = `Write 3 Google reviews for this business:
+
+Business: ${biz.name}
+Location: ${biz.address || "India"}
+Star rating: ${stars} stars
+Customer highlighted: ${aspectLabel}
+SEO keywords (use naturally if possible): ${biz.keywords || "none"}
+Featured items (mention if fits): ${biz.products || "none"}
+
+The customer ${ratingWord} ${biz.name}. Make each review feel like it was written by a different type of person — one quick reviewer, one detailed reviewer, one emotional/personal reviewer.`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
-      temperature: 0.85,
+      temperature: 1.0,
       messages: [
-        {
-          role: "system",
-          content: "You only output valid JSON with a single key `reviews` whose value is an array of exactly 3 non-empty strings.",
-        },
-        {
-          role: "user",
-          content: JSON.stringify(userPayload),
-        },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
       ],
     });
 
