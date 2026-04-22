@@ -4,12 +4,23 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-const CHIPS = [
-  { id: "food", label: "Food" },
-  { id: "service", label: "Service" },
-  { id: "products", label: "Products" },
-  { id: "ambiance", label: "Ambiance" },
-];
+const CHIPS_BY_TYPE = {
+  restaurant: ["Food", "Service", "Ambiance", "Value for money"],
+  cafe: ["Coffee", "Food", "Ambiance", "Service"],
+  hotel: ["Rooms", "Service", "Cleanliness", "Location"],
+  bar: ["Drinks", "Ambiance", "Service", "Music"],
+  bakery: ["Products", "Taste", "Freshness", "Service"],
+  fastfood: ["Food", "Speed", "Value", "Service"],
+  dhaba: ["Food", "Taste", "Value", "Vibe"],
+  salon: ["Service", "Staff", "Cleanliness", "Value"],
+  gym: ["Equipment", "Trainers", "Cleanliness", "Membership"],
+  retail: ["Products", "Service", "Pricing", "Experience"],
+  clinic: ["Doctor", "Staff", "Cleanliness", "Service"],
+  agency: ["Service", "Professionalism", "Results", "Communication"],
+  education: ["Teaching", "Faculty", "Facilities", "Results"],
+  travel: ["Service", "Experience", "Value", "Guide"],
+  other: ["Service", "Quality", "Experience", "Value"],
+};
 
 function RatingStep({ rating, hoverRating, setRating, setHoverRating, onContinue }) {
   const preview = hoverRating ?? rating ?? 0;
@@ -23,39 +34,25 @@ function RatingStep({ rating, hoverRating, setRating, setHoverRating, onContinue
   return (
     <section className="mt-10 space-y-4">
       <h2 className="text-lg font-semibold text-white">How was your experience?</h2>
-      <p className="text-sm text-text-muted">
-        Tap a star to rate — then continue if you&apos;d like to leave a public review.
-      </p>
-      <div
-        className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2"
-        onMouseLeave={() => setHoverRating(null)}
-        role="radiogroup"
-        aria-label="Star rating"
-      >
+      <p className="text-sm text-text-muted">Tap a star to rate — then continue if you'd like to leave a public review.</p>
+      <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2"
+        onMouseLeave={() => setHoverRating(null)} role="radiogroup" aria-label="Star rating">
         {[1, 2, 3, 4, 5].map((n) => {
           const filled = preview >= n;
           return (
-            <button
-              key={n}
-              type="button"
-              aria-label={`Rate ${n} out of 5 stars`}
-              onMouseEnter={() => setHoverRating(n)}
-              onFocus={() => setHoverRating(n)}
-              onBlur={() => setHoverRating(null)}
-              onClick={() => setRating(n)}
-              className={`flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-[clamp(2.5rem,11vw,3rem)] leading-none transition-all duration-200 ease-out hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F4B400]/60 active:scale-95 sm:min-h-[52px] sm:min-w-[52px] ${
+            <button key={n} type="button" aria-label={`Rate ${n} out of 5 stars`}
+              onMouseEnter={() => setHoverRating(n)} onFocus={() => setHoverRating(n)}
+              onBlur={() => setHoverRating(null)} onClick={() => setRating(n)}
+              className={`flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-[clamp(2.5rem,11vw,3rem)] leading-none transition-all duration-200 ease-out hover:scale-110 focus:outline-none active:scale-95 sm:min-h-[52px] sm:min-w-[52px] ${
                 filled ? "text-[#F4B400] drop-shadow-[0_0_14px_rgba(244,180,0,0.45)]" : "text-white/20"
-              }`}
-            >
-              ★
-            </button>
+              }`}>★</button>
           );
         })}
       </div>
 
       {rating !== null && rating <= 2 ? (
         <div className="mt-4 rounded-xl border border-red-500/50 bg-red-950/95 p-4 text-center text-sm leading-relaxed text-red-50 shadow-lg" role="status">
-          We&apos;re sorry to hear that! Please contact us directly so we can make it right.
+          We're sorry to hear that! Please contact us directly so we can make it right.
         </div>
       ) : null}
 
@@ -63,12 +60,8 @@ function RatingStep({ rating, hoverRating, setRating, setHoverRating, onContinue
         <p className="mt-2 text-center text-xl font-bold tracking-tight text-[#F4B400] drop-shadow-sm">{positiveLabel}</p>
       ) : null}
 
-      <button
-        type="button"
-        disabled={!canContinue}
-        onClick={onContinue}
-        className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-      >
+      <button type="button" disabled={!canContinue} onClick={onContinue}
+        className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
         Continue
       </button>
     </section>
@@ -103,11 +96,7 @@ export default function CustomerReviewPage() {
         const res = await fetch(`/api/business/${businessId}`);
         const data = await res.json();
         if (cancelled) return;
-        if (!res.ok) {
-          setLoadError(data.message ?? "Business not found.");
-          setStep("error");
-          return;
-        }
+        if (!res.ok) { setLoadError(data.message ?? "Business not found."); setStep("error"); return; }
         setBusiness(data.business);
         setStep("rating");
 
@@ -117,10 +106,7 @@ export default function CustomerReviewPage() {
           body: JSON.stringify({ businessId }),
         }).catch(() => {});
       } catch {
-        if (!cancelled) {
-          setLoadError("Could not load this business.");
-          setStep("error");
-        }
+        if (!cancelled) { setLoadError("Could not load this business."); setStep("error"); }
       }
     }
 
@@ -128,16 +114,14 @@ export default function CustomerReviewPage() {
     return () => { cancelled = true; };
   }, [businessId]);
 
-  // Countdown timer on success screen
   useEffect(() => {
     if (step !== "success") return;
-    if (countdown <= 0) {
-      window.location.href = business?.gmb_link ?? "/";
-      return;
-    }
+    if (countdown <= 0) { window.location.href = business?.gmb_link ?? "/"; return; }
     const t = setTimeout(() => setCountdown(c => c - 1), 1000);
     return () => clearTimeout(t);
   }, [step, countdown, business]);
+
+  const chips = CHIPS_BY_TYPE[business?.business_type ?? "restaurant"] ?? CHIPS_BY_TYPE.restaurant;
 
   const toggleAspect = useCallback((id) => {
     setAspects((prev) => prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]);
@@ -169,9 +153,7 @@ export default function CustomerReviewPage() {
       setReviews(data.reviews);
       setSelected(0);
       setStep("pick");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   async function copyAndOpen() {
@@ -197,36 +179,25 @@ export default function CustomerReviewPage() {
     setBusy(false);
   }
 
-  if (step === "loading") {
-    return <div className="flex min-h-[50vh] items-center justify-center bg-navy text-text-muted">Loading…</div>;
-  }
+  if (step === "loading") return <div className="flex min-h-[50vh] items-center justify-center bg-navy text-text-muted">Loading…</div>;
 
-  if (step === "error") {
-    return (
-      <div className="min-h-[100dvh] bg-navy px-4 py-16 text-center">
-        <p className="text-accent">{loadError}</p>
-        <Link href="/" className="mt-6 inline-block text-sm text-white underline">Home</Link>
-      </div>
-    );
-  }
+  if (step === "error") return (
+    <div className="min-h-[100dvh] bg-navy px-4 py-16 text-center">
+      <p className="text-accent">{loadError}</p>
+      <Link href="/" className="mt-6 inline-block text-sm text-white underline">Home</Link>
+    </div>
+  );
 
   return (
     <div className="min-h-[100dvh] bg-navy px-4 py-8 pb-16 sm:py-12">
       <div className="mx-auto max-w-lg">
         <p className="text-center text-xs font-medium uppercase tracking-wide text-accent">InsightRep</p>
         <h1 className="mt-2 text-center text-2xl font-bold text-white">{business.name}</h1>
-        {business.address ? (
-          <p className="mt-2 text-center text-sm text-text-muted">{business.address}</p>
-        ) : null}
+        {business.address && <p className="mt-2 text-center text-sm text-text-muted">{business.address}</p>}
 
         {step === "rating" && (
-          <RatingStep
-            rating={rating}
-            hoverRating={hoverRating}
-            setRating={setRating}
-            setHoverRating={setHoverRating}
-            onContinue={() => setStep("aspects")}
-          />
+          <RatingStep rating={rating} hoverRating={hoverRating} setRating={setRating}
+            setHoverRating={setHoverRating} onContinue={() => setStep("aspects")} />
         )}
 
         {step === "aspects" && (
@@ -235,38 +206,30 @@ export default function CustomerReviewPage() {
             <h2 className="text-lg font-semibold text-white">What stood out?</h2>
             <p className="text-sm text-text-muted">Pick any that apply.</p>
             <div className="flex flex-wrap gap-2">
-              {CHIPS.map((c) => {
-                const on = aspects.includes(c.id);
+              {chips.map((c) => {
+                const on = aspects.includes(c);
                 return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => toggleAspect(c.id)}
+                  <button key={c} type="button" onClick={() => toggleAspect(c)}
                     className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
                       on ? "border-accent bg-accent/15 text-accent" : "border-white/15 text-text-muted hover:border-white/30 hover:text-white"
-                    }`}
-                  >
-                    {c.label}
+                    }`}>
+                    {c}
                   </button>
                 );
               })}
             </div>
 
-            {limitReached ? (
+            {limitReached && (
               <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5 text-center space-y-2">
                 <p className="text-sm font-semibold text-accent">Monthly limit reached</p>
                 <p className="text-xs text-text-muted">This business has used all 10 free AI reviews this month. The owner needs to upgrade to continue.</p>
               </div>
-            ) : null}
+            )}
 
-            {genError && !limitReached ? <p className="text-sm text-accent" role="alert">{genError}</p> : null}
+            {genError && !limitReached && <p className="text-sm text-accent" role="alert">{genError}</p>}
 
-            <button
-              type="button"
-              disabled={busy || limitReached}
-              onClick={generate}
-              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white disabled:opacity-50"
-            >
+            <button type="button" disabled={busy || limitReached} onClick={generate}
+              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white disabled:opacity-50">
               {busy ? "Generating…" : "Generate review options"}
             </button>
           </section>
@@ -284,25 +247,17 @@ export default function CustomerReviewPage() {
             <h2 className="text-lg font-semibold text-white">Pick one to copy</h2>
             <div className="space-y-3">
               {reviews.map((text, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setSelected(i)}
+                <button key={i} type="button" onClick={() => setSelected(i)}
                   className={`w-full rounded-2xl border p-4 text-left text-sm leading-relaxed transition ${
                     selected === i ? "border-accent bg-accent/10 text-white" : "border-white/10 bg-navy-muted/40 text-text-muted hover:border-white/25"
-                  }`}
-                >
+                  }`}>
                   {text}
                 </button>
               ))}
             </div>
-            {genError ? <p className="text-sm text-accent" role="alert">{genError}</p> : null}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={copyAndOpen}
-              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white disabled:opacity-50"
-            >
+            {genError && <p className="text-sm text-accent" role="alert">{genError}</p>}
+            <button type="button" disabled={busy} onClick={copyAndOpen}
+              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white disabled:opacity-50">
               {busy ? "Copying…" : "Copy & open Google"}
             </button>
             <button type="button" onClick={() => router.push("/")} className="w-full text-center text-sm text-text-muted hover:text-white">
@@ -313,30 +268,22 @@ export default function CustomerReviewPage() {
 
         {step === "success" && (
           <section className="mt-16 flex flex-col items-center gap-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20 text-5xl">
-              ✅
-            </div>
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20 text-5xl">✅</div>
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-white">Review copied!</h2>
-              <p className="text-sm text-text-muted max-w-xs mx-auto">
-                Your review is copied to clipboard. Opening Google now — just paste and hit Post.
-              </p>
+              <p className="text-sm text-text-muted max-w-xs mx-auto">Your review is copied. Opening Google now — just paste and hit Post.</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-4 w-full text-left">
               <p className="text-xs text-text-muted mb-2 uppercase tracking-wide font-medium">Your review</p>
               <p className="text-sm text-white leading-relaxed">{reviews[selected]}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => { window.location.href = business?.gmb_link; }}
-              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110"
-            >
+            <button type="button" onClick={() => { window.location.href = business?.gmb_link; }}
+              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110">
               Open Google now ({countdown}s)
             </button>
             <p className="text-xs text-text-muted">Redirecting automatically in {countdown} seconds</p>
           </section>
         )}
-
       </div>
     </div>
   );

@@ -2,19 +2,14 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase-admin";
 
-const ASPECTS = new Set(["food", "service", "products", "ambiance"]);
 const FREE_MONTHLY_LIMIT = 10;
 
 export async function POST(request) {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ ok: false, message: "OPENAI_API_KEY is not set." }, { status: 503 });
-  }
+  if (!apiKey) return NextResponse.json({ ok: false, message: "OPENAI_API_KEY is not set." }, { status: 503 });
 
   const admin = createAdminClient();
-  if (!admin) {
-    return NextResponse.json({ ok: false, message: "Supabase admin client not configured." }, { status: 500 });
-  }
+  if (!admin) return NextResponse.json({ ok: false, message: "Supabase admin client not configured." }, { status: 500 });
 
   let body;
   try { body = await request.json(); } catch {
@@ -22,22 +17,18 @@ export async function POST(request) {
   }
 
   const { businessId, rating, aspects } = body;
-  if (!businessId || typeof businessId !== "string") {
+  if (!businessId || typeof businessId !== "string")
     return NextResponse.json({ ok: false, message: "businessId required." }, { status: 400 });
-  }
 
   const stars = Number(rating);
-  if (!Number.isInteger(stars) || stars < 3 || stars > 5) {
+  if (!Number.isInteger(stars) || stars < 3 || stars > 5)
     return NextResponse.json({ ok: false, message: "Rating must be 3, 4, or 5." }, { status: 400 });
-  }
 
-  const tags = Array.isArray(aspects)
-    ? aspects.filter((a) => typeof a === "string" && ASPECTS.has(a))
-    : [];
+  const tags = Array.isArray(aspects) ? aspects.filter(a => typeof a === "string") : [];
 
   const { data: biz, error } = await admin
     .from("businesses")
-    .select("name, address, gmb_link, keywords, products, plan")
+    .select("name, address, gmb_link, keywords, products, plan, business_type, business_category")
     .eq("id", businessId)
     .maybeSingle();
 
@@ -66,36 +57,47 @@ export async function POST(request) {
 
   const openai = new OpenAI({ apiKey });
 
+  const businessTypeLabel = biz.business_type === "other"
+    ? (biz.business_category || "business")
+    : biz.business_type || "restaurant";
+
   const aspectLabel = tags.length ? tags.join(", ") : "overall experience";
   const ratingWord = stars === 5 ? "absolutely loved" : stars === 4 ? "really enjoyed" : "had a good experience at";
 
-  const systemPrompt = `You are a real customer writing a genuine Google Maps review. You write in natural, conversational Indian English — the way a real person would type on their phone after visiting a restaurant or cafe. Your reviews feel authentic, varied, and human.
+  const systemPrompt = `You are a real customer writing a genuine Google Maps review. You write in natural, conversational Indian English — the way a real person would type on their phone. Your reviews feel authentic, varied, and human.
 
 STRICT RULES:
 - Output ONLY valid JSON: { "reviews": ["review1", "review2", "review3"] }
 - Each review must be COMPLETELY DIFFERENT in structure, tone, opening, and style
-- Review 1: casual and short (1-2 sentences, like someone typed it quickly)
-- Review 2: detailed and specific (3-4 sentences, mentions specific dishes/experience)  
-- Review 3: story-like or emotional (2-3 sentences, personal feel)
+- Review 1: casual and short (1-2 sentences, like someone typed it quickly on their phone)
+- Review 2: detailed and specific (3-4 sentences, mentions specific aspects or items)
+- Review 3: story-like or emotional (2-3 sentences, personal feel, recommendation)
 - Never start two reviews with the same word or phrase
 - Never use the same sentence structure twice
 - Use natural Indian English — mix of formal and casual is fine
 - Occasionally use phrases like "honestly", "must say", "totally", "definitely", "hands down"
 - Weave in SEO keywords and products ONLY if they fit naturally — never force them
-- No hashtags, no emojis, no "As an AI", no mention of QR or prompts
+- No hashtags, no emojis, no AI mentions, no mention of QR or prompts
 - No corporate language like "exceptional", "impeccable", "delightful experience"
-- Sound like a real person, not a marketing brochure`;
+- Sound like a real person, not a marketing brochure
+- Match the review context to the business type`;
 
   const userPrompt = `Write 3 Google reviews for this business:
 
-Business: ${biz.name}
+Business name: ${biz.name}
+Business type: ${businessTypeLabel}
 Location: ${biz.address || "India"}
-Star rating: ${stars} stars
+Star rating given: ${stars} stars
 Customer highlighted: ${aspectLabel}
 SEO keywords (use naturally if possible): ${biz.keywords || "none"}
-Featured items (mention if fits): ${biz.products || "none"}
+Featured items to mention (only if fits naturally): ${biz.products || "none"}
 
-The customer ${ratingWord} ${biz.name}. Make each review feel like it was written by a different type of person — one quick reviewer, one detailed reviewer, one emotional/personal reviewer.`;
+The customer ${ratingWord} ${biz.name}. Make each review feel like it was written by a different person:
+- Review 1: A busy person who types quickly — short, punchy, direct
+- Review 2: A detailed person who explains their experience — specific, informative
+- Review 3: An emotional person who wants to recommend — warm, personal, encouraging
+
+All 3 must sound like genuine ${businessTypeLabel} customers, not marketing copy.`;
 
   try {
     const completion = await openai.chat.completions.create({
