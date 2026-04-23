@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ROICalculator from "./components/ROICalculator";
 import FAQSection from "./components/FAQSection";
+import QRCardsSection from "./components/QRCardsSection";
 
 const stepsOwner = [
   {
@@ -20,7 +21,7 @@ const stepsOwner = [
 const stepsCustomer = [
   {
     title: "Scan & rate",
-    body: "Guests scan the QR, pick 3–5 stars, and answer a few taps about food, service, or products.",
+    body: "Guests scan the QR, pick 3-5 stars, and answer a few taps about food, service, or products.",
   },
   {
     title: "Pick a review",
@@ -236,7 +237,6 @@ export default function LandingPage() {
                   Get started →
                 </Link>
               </div>
-
               <div className="relative rounded-2xl border border-accent/50 bg-accent/5 p-6 space-y-5">
                 <div className="absolute top-4 right-4 bg-accent text-white text-[10px] font-bold px-2 py-1 rounded-full tracking-wide">BEST VALUE</div>
                 <div>
@@ -283,7 +283,6 @@ export default function LandingPage() {
                   Order on WhatsApp
                 </a>
               </div>
-
               <div className="rounded-2xl border border-accent/40 bg-accent/5 p-6 space-y-4 text-center relative">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full">POPULAR</div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-accent">Set of 5</p>
@@ -299,7 +298,6 @@ export default function LandingPage() {
                   Order on WhatsApp
                 </a>
               </div>
-
               <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 space-y-4 text-center">
                 <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">Set of 10</p>
                 <p className="text-3xl font-extrabold text-white">Rs.1,043</p>
@@ -316,6 +314,18 @@ export default function LandingPage() {
               </div>
             </div>
             <p className="text-center text-xs text-text-muted mt-6">Available to all InsightRep subscribers · WhatsApp us to order · Delivered in 3-5 working days</p>
+          </div>
+        </section>
+
+        {/* QR Cards */}
+        <section className="border-t border-white/5 px-4 py-14 sm:px-6 sm:py-20">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-10 text-center">
+              <p className="text-xs font-semibold uppercase tracking-widest text-accent mb-2">QR Cards</p>
+              <h2 className="text-2xl font-bold text-white sm:text-3xl">Printed QR Cards</h2>
+              <p className="mt-3 text-text-muted text-sm sm:text-base">Premium PVC cards with your business QR — place at tables, counters and billing desks.</p>
+            </div>
+            <QRCardsSection />
           </div>
         </section>
 
