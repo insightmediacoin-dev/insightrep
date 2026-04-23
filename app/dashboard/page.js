@@ -14,6 +14,42 @@ function formatCreatedAt(iso) {
   } catch { return "—"; }
 }
 
+function WelcomeModal({ business, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-accent/30 bg-navy p-8 text-center space-y-5">
+        <div className="flex justify-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/15 text-3xl">🎉</span>
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">You're live!</p>
+          <h2 className="mt-2 text-2xl font-bold text-white">{business.name} is ready</h2>
+          <p className="mt-2 text-sm text-text-muted">Your AI-powered Google review system is active. Place your QR code where customers can scan it.</p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-navy-muted/40 p-4 text-left space-y-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Next steps</p>
+          <ol className="space-y-1.5 text-sm text-text-muted list-none">
+            <li className="flex items-center gap-2"><span className="text-accent font-bold">1.</span> Download your QR code below</li>
+            <li className="flex items-center gap-2"><span className="text-accent font-bold">2.</span> Print and place at your counter</li>
+            <li className="flex items-center gap-2"><span className="text-accent font-bold">3.</span> Watch reviews come in</li>
+          </ol>
+        </div>
+        <div className="flex flex-col gap-3">
+          <button onClick={onClose}
+            className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110">
+            Go to Dashboard
+          </button>
+          <a href={`https://wa.me/917387609098?text=Hi, I just signed up on InsightRep — ${business.name}`}
+            target="_blank" rel="noopener noreferrer"
+            className="flex h-12 w-full items-center justify-center rounded-full border border-white/15 text-sm font-medium text-text-muted hover:text-white">
+            WhatsApp us for help
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function QRDownloadCard({ reviewUrl, businessName }) {
   return (
     <div style={{ width: 400, background: "#ffffff", borderRadius: 24, padding: "36px 32px 28px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, fontFamily: "Arial, sans-serif" }}>
@@ -192,6 +228,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ scans: 0, reviews: 0 });
   const [downloading, setDownloading] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const qrCardRef = useRef(null);
 
   const loadBusiness = useCallback(async () => {
@@ -223,6 +260,14 @@ export default function DashboardPage() {
       }
       setBusiness(bizData.business);
       setLoadError("");
+
+      // Show welcome modal only once
+      const welcomed = localStorage.getItem("insightrep_welcomed");
+      if (!welcomed) {
+        setShowWelcome(true);
+        localStorage.setItem("insightrep_welcomed", "1");
+      }
+
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats({ scans: statsData.scans ?? 0, reviews: statsData.reviews ?? 0 });
@@ -239,6 +284,7 @@ export default function DashboardPage() {
     localStorage.removeItem(OWNER_IDENTIFIER_TYPE_STORAGE_KEY);
     localStorage.removeItem(PHONE_STORAGE_KEY);
     localStorage.removeItem(BUSINESS_ID_STORAGE_KEY);
+    localStorage.removeItem("insightrep_welcomed");
     router.replace("/login");
   }
 
@@ -271,6 +317,12 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-[100dvh] bg-navy px-4 py-10 sm:py-14">
+
+      {/* Welcome Modal */}
+      {showWelcome && business && (
+        <WelcomeModal business={business} onClose={() => setShowWelcome(false)} />
+      )}
+
       <div className="mx-auto flex max-w-3xl flex-col gap-8">
 
         {/* Header */}
@@ -317,7 +369,7 @@ export default function DashboardPage() {
           </div>
           <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 text-center">
             <p className="text-3xl font-bold text-accent">{stats.reviews}</p>
-            <p className="mt-1 text-xs font-medium text-text-muted uppercase tracking-wide">Reviews Posted</p>
+            <p className="mt-1 text-xs font-medium text-text-muted uppercase tracking-wide">Reviews Generated</p>
           </div>
         </section>
 
