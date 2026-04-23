@@ -10,15 +10,61 @@ const PACKS = [
   { qty: 25, price: "Rs.1,499", per: "Rs.59/card",  label: "Multi-property", hot: false },
 ];
 
+function PackButton({ p, i, selected, setSelected }) {
+  const isSelected = selected === i;
+  const baseClass = "flex items-center justify-between rounded-2xl border px-5 py-4 transition-all duration-200 text-left w-full";
+  const stateClass = isSelected
+    ? "border-accent bg-accent/10"
+    : p.hot
+    ? "border-accent/30 bg-accent/5 hover:border-accent/50"
+    : "border-white/10 bg-white/3 hover:border-white/20";
+
+  return (
+    <button
+      type="button"
+      onClick={function() { setSelected(i); }}
+      className={baseClass + " " + stateClass}
+    >
+      <div>
+        {p.hot && !isSelected && (
+          <span className="inline-block bg-accent text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide mb-1">
+            Best value
+          </span>
+        )}
+        {isSelected && (
+          <span className="inline-block bg-accent text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide mb-1">
+            Selected
+          </span>
+        )}
+        <p className="text-sm font-semibold text-white">
+          Pack of {p.qty}
+        </p>
+        <p className="text-[10px] text-text-muted">
+          {p.label} · {p.per}
+        </p>
+      </div>
+      <div className="text-right">
+        <p className={isSelected ? "text-xl font-bold text-accent" : "text-xl font-bold text-white"}>
+          {p.price}
+        </p>
+        <p className="text-[9px] text-text-muted">
+          + delivery
+        </p>
+      </div>
+    </button>
+  );
+}
+
 export default function QRCardsSection() {
   const [selected, setSelected] = useState(2);
 
   const pack = PACKS[selected];
   const waMsg = "Hi, I want to order Pack of " + pack.qty + " QR cards (" + pack.price + ") from InsightRep. Please confirm availability and delivery details.";
-  const waUrl = "https://wa.me/917387609098?text=" + encodeURIComponent(waMsg);
+  const waUrl = "https://wa.me/917387609098text=" + encodeURIComponent(waMsg);
 
   return (
     <div className="flex flex-col lg:flex-row items-center gap-12 justify-center">
+
       <div className="flex-shrink-0 flex flex-col items-center">
         <style>{`
           .flip-scene { width:260px; height:400px; perspective:1000px; cursor:pointer; }
@@ -65,6 +111,7 @@ export default function QRCardsSection() {
 
         <div className="flip-scene">
           <div className="flip-card">
+
             <div className="card-face card-front">
               <p className="text-[9px] font-bold tracking-[3px] text-accent uppercase self-start mb-1">InsightRep</p>
               <p className="text-base font-bold text-white self-start mb-0.5">Your Business Name</p>
@@ -92,14 +139,19 @@ export default function QRCardsSection() {
                 AI-powered Google reviews<br />for Indian hospitality
               </p>
               <div className="w-10 h-0.5 bg-accent rounded mb-5 relative z-10" />
-              <p className="text-white/25 text-[11px] font-semibold tracking-wide mb-1.5 relative z-10">qr.insightmedia.co.in</p>
-              <p className="text-white/15 text-[10px] relative z-10">By Insight Media · Chh. Sambhajinagar</p>
+              <p className="text-white/25 text-[11px] font-semibold tracking-wide mb-1.5 relative z-10">
+                qr.insightmedia.co.in
+              </p>
+              <p className="text-white/15 text-[10px] relative z-10">
+                By Insight Media · Chh. Sambhajinagar
+              </p>
               <div className="flex gap-1.5 mt-6 relative z-10">
                 <div className="w-1.5 h-1.5 rounded-full bg-accent" />
                 <div className="w-1.5 h-1.5 rounded-full bg-accent/30" />
                 <div className="w-1.5 h-1.5 rounded-full bg-accent/30" />
               </div>
             </div>
+
           </div>
         </div>
         <p className="text-xs text-white/20 mt-4 tracking-wide">Hover to flip</p>
@@ -108,27 +160,13 @@ export default function QRCardsSection() {
       <div className="flex flex-col gap-3 w-full max-w-sm">
         {PACKS.map(function(p, i) {
           return (
-            <button
-              key={p.qty}
-              type="button"
-              onClick={function() { setSelected(i); }}
-              className={"flex items-center justify-between rounded-2xl border px-5 py-4 transition-all duration-200 text-left w-fll " + (selected === i ? "border-accent bg-accent/10 shadow-[0_0_0_1px_#E5322D]" : p.hot ? "border-accent/30 bg-accent/5 hover:border-accent/50" : "border-white/10 bg-white/3 hover:border-white/20")}
-            >
-              <div>
-                {p.hot && selected !== i && (
-                  <span className="inline-block bg-accent text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide mb-1">Best value</span>
-                )}
-                {selected === i && (
-                  <span className="inline-block bg-accent text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide mb-1">Selected</span>
-                )}
-                <p className="text-sm font-semibold text-white">Pack of {p.qty}</p>
-                <p className="text-[10px] text-text-muted">{p.label} · {p.per}</p>
-              </div>
-              <div className="text-right">
-                <p className={"text-xl font-bold " + (selected === i ? "text-accent" : "text-white")}>{p.price}/p>
-                <p className="text-[9px] text-text-muted">+ delivery</p>
-              </div>
-            </button>
+            <PackButton
+             key={p.qty}
+              p={p}
+              i={i}
+              selected={selected}
+              setSelected={setSelected}
+            />
           );
         })}
 
@@ -146,6 +184,7 @@ export default function QRCardsSection() {
           PVC premium quality · Custom branded · Delivered in 3-5 working days
         </p>
       </div>
+
     </div>
   );
 }
