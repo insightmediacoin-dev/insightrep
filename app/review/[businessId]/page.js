@@ -40,12 +40,12 @@ function RatingStep({ rating, hoverRating, setRating, setHoverRating, onContinue
         {[1, 2, 3, 4, 5].map((n) => {
           const filled = preview >= n;
           return (
-            <button key={n} type="button" aria-label={`Rate ${n} out of 5 stars`}
+            <button key={n} type="button" aria-label={"Rate " + n + " out of 5 stars"}
               onMouseEnter={() => setHoverRating(n)} onFocus={() => setHoverRating(n)}
               onBlur={() => setHoverRating(null)} onClick={() => setRating(n)}
-              className={`flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-[clamp(2.5rem,11vw,3rem)] leading-none transition-all duration-200 ease-out hover:scale-110 focus:outline-none active:scale-95 sm:min-h-[52px] sm:min-w-[52px] ${
-                filled ? "text-[#F4B400] drop-shadow-[0_0_14px_rgba(244,180,0,0.45)]" : "text-white/20"
-              }`}>★</button>
+              className={"flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-[clamp(2.5rem,11vw,3rem)] leading-none transition-all duration-200 ease-out hover:scale-110 focus:outline-none active:scale-95 sm:min-h-[52px] sm:min-w-[52px] " + (filled ? "text-[#F4B400] drop-shadow-[0_0_14px_rgba(244,180,0,0.45)]" : "text-white/20")}>
+              ★
+            </button>
           );
         })}
       </div>
@@ -85,6 +85,7 @@ export default function CustomerReviewPage() {
   const [limitReached, setLimitReached] = useState(false);
   const [busy, setBusy] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!businessId) return;
@@ -93,7 +94,7 @@ export default function CustomerReviewPage() {
     async function load() {
       setLoadError("");
       try {
-        const res = await fetch(`/api/business/${businessId}`);
+        const res = await fetch("/api/business/" + businessId);
         const data = await res.json();
         if (cancelled) return;
         if (!res.ok) { setLoadError(data.message ?? "Business not found."); setStep("error"); return; }
@@ -162,6 +163,7 @@ export default function CustomerReviewPage() {
     setGenError("");
     try {
       await navigator.clipboard.writeText(reviews[selected]);
+      setCopied(true);
     } catch {
       setGenError("Could not access clipboard. Copy the text manually.");
       setBusy(false);
@@ -179,7 +181,9 @@ export default function CustomerReviewPage() {
     setBusy(false);
   }
 
-  if (step === "loading") return <div className="flex min-h-[50vh] items-center justify-center bg-navy text-text-muted">Loading…</div>;
+  if (step === "loading") return (
+    <div className="flex min-h-[50vh] items-center justify-center bg-navy text-text-muted">Loading…</div>
+  );
 
   if (step === "error") return (
     <div className="min-h-[100dvh] bg-navy px-4 py-16 text-center">
@@ -210,9 +214,7 @@ export default function CustomerReviewPage() {
                 const on = aspects.includes(c);
                 return (
                   <button key={c} type="button" onClick={() => toggleAspect(c)}
-                    className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                      on ? "border-accent bg-accent/15 text-accent" : "border-white/15 text-text-muted hover:border-white/30 hover:text-white"
-                    }`}>
+                    className={"rounded-full border px-4 py-2 text-sm font-medium transition " + (on ? "border-accent bg-accent/15 text-accent" : "border-white/15 text-text-muted hover:border-white/30 hover:text-white")}>
                     {c}
                   </button>
                 );
@@ -248,9 +250,7 @@ export default function CustomerReviewPage() {
             <div className="space-y-3">
               {reviews.map((text, i) => (
                 <button key={i} type="button" onClick={() => setSelected(i)}
-                  className={`w-full rounded-2xl border p-4 text-left text-sm leading-relaxed transition ${
-                    selected === i ? "border-accent bg-accent/10 text-white" : "border-white/10 bg-navy-muted/40 text-text-muted hover:border-white/25"
-                  }`}>
+                  className={"w-full rounded-2xl border p-4 text-left text-sm leading-relaxed transition " + (selected === i ? "border-accent bg-accent/10 text-white" : "border-white/10 bg-navy-muted/40 text-text-muted hover:border-white/25")}>
                   {text}
                 </button>
               ))}
@@ -267,23 +267,68 @@ export default function CustomerReviewPage() {
         )}
 
         {step === "success" && (
-          <section className="mt-16 flex flex-col items-center gap-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20 text-5xl">✅</div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-white">Review copied!</h2>
-              <p className="text-sm text-text-muted max-w-xs mx-auto">Your review is copied. Opening Google now — just paste and hit Post.</p>
+          <section className="mt-10 flex flex-col items-center gap-5 text-center">
+
+            {/* Big copied confirmation */}
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20 text-5xl animate-bounce">
+              ✅
             </div>
-            <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-4 w-full text-left">
-              <p className="text-xs text-text-muted mb-2 uppercase tracking-wide font-medium">Your review</p>
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold text-white">Review Copied!</h2>
+              <p className="text-sm text-text-muted">Your review is ready — just paste it on Google.</p>
+            </div>
+
+            {/* Copied review shown again clearly */}
+            <div className="w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-left space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-widest text-accent">Your copied review</p>
+                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-medium">Copied</span>
+              </div>
               <p className="text-sm text-white leading-relaxed">{reviews[selected]}</p>
             </div>
-            <button type="button" onClick={() => { window.location.href = business?.gmb_link; }}
-              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110">
-              Open Google now ({countdown}s)
+
+            {/* Step by step instructions */}
+            <div className="w-full rounded-2xl border border-white/10 bg-navy-muted/40 p-4 text-left space-y-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-text-muted">3 steps to post</p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">1</span>
+                  <p className="text-sm text-white">Google will open — tap the star rating you want</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">2</span>
+                  <p className="text-sm text-white">Tap the review text box — long press and Paste</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">3</span>
+                  <p className="text-sm text-white">Hit Post — done in 10 seconds!</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Countdown button */}
+            <button
+              type="button"
+              onClick={() => { window.location.href = business?.gmb_link; }}
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110 transition">
+              <span>Opening Google in {countdown}s — tap to open now</span>
             </button>
-            <p className="text-xs text-text-muted">Redirecting automatically in {countdown} seconds</p>
+
+            {/* Progress bar */}
+            <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all duration-1000"
+                style={{ width: ((5 - countdown) / 5 * 100) + "%" }}
+              />
+            </div>
+
+            <p className="text-xs text-text-muted">
+              Review not pasting? Long press inside the Google text box and tap Paste.
+            </p>
+
           </section>
         )}
+
       </div>
     </div>
   );

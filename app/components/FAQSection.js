@@ -25,14 +25,38 @@ function FAQItem({ question, answer }) {
 
 export default function FAQSection() {
   const faqs = [
-    { q: "Does the customer need to download any app?", a: "No. The customer simply scans the QR code with their phone camera and it opens directly in their browser. Zero downloads required. Works on any smartphone." },
-    { q: "Will Google flag these as fake reviews?", a: "No. InsightRep generates text suggestions and the customer reads, selects, and posts the review themselves. This is fully within Google review policies. The review comes from the customer's own Google account." },
-    { q: "What if a customer tries to give 1 or 2 stars?", a: "InsightRep blocks 1-2 star selections from reaching Google. The customer sees: Had a bad experience? Contact us directly. You get private feedback. Google sees nothing negative." },
-    { q: "Can I update my menu items and keywords anytime?", a: "Yes, anytime. Log into your dashboard, click Edit Profile, and update your featured dishes, SEO keywords, or Google review link in under 2 minutes." },
-    { q: "How do I find my Google review link?", a: "Search your restaurant on Google Maps, click your listing, click Write a review, then copy the URL from your browser. Our team will help you find it on the setup call." },
-    { q: "Can I cancel if I am not satisfied?", a: "Monthly plan: cancel anytime with 7 days notice. No penalty, no questions asked. Annual plan: non-refundable after 7 days. We are confident you will see results and choose to stay." },
-    { q: "How many reviews can I expect per month?", a: "Restaurants typically see 15-25 new reviews per month with consistent QR placement. Results depend on your footfall and how prominently you display the QR code." },
-    { q: "Is my business data safe?", a: "Yes. All data is stored on enterprise-grade secure servers. We never share, sell, or misuse your business information." },
+    {
+      q: "Does the customer need to download any app?",
+      a: "No. The customer simply scans the QR code with their phone camera — it opens directly in their browser. Zero downloads required. Works on any smartphone.",
+    },
+    {
+      q: "Will Google flag these as fake reviews?",
+      a: "No. InsightRep generates text suggestions — the customer reads, selects, and posts the review themselves. This is fully within Google's review policies. The review comes from the customer's own Google account.",
+    },
+    {
+      q: "What if a customer tries to give 1 or 2 stars?",
+      a: "InsightRep blocks 1-2 star selections from reaching Google. The customer sees: 'Had a bad experience? Contact us directly.' You get private feedback. Google sees nothing negative.",
+    },
+    {
+      q: "Can I update my menu items and keywords anytime?",
+      a: "Yes, anytime. Log into your dashboard, click Edit Profile, and update your featured dishes, SEO keywords, or Google review link in under 2 minutes.",
+    },
+    {
+      q: "How do I find my Google review link?",
+      a: "Search your restaurant on Google Maps, click your listing, click 'Write a review', then copy the URL from your browser. That's your review link. Our team will help you find it on the setup call.",
+    },
+    {
+      q: "Can I cancel if I am not satisfied?",
+      a: "Monthly plan: cancel anytime with 7 days notice. No penalty, no questions asked. Annual plan: non-refundable after 7 days. We are confident you will see results and choose to stay.",
+    },
+    {
+      q: "How many reviews can I expect per month?",
+      a: "Restaurants typically see 15-25 new reviews per month with consistent QR placement. Results depend on your footfall and how prominently you display the QR code.",
+    },
+    {
+      q: "Is my business data safe?",
+      a: "Yes. All data is stored on enterprise-grade secure servers. We never share, sell, or misuse your business information.",
+    },
   ];
 
   return (
