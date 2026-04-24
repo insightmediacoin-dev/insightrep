@@ -61,49 +61,91 @@ export async function POST(request) {
     ? (biz.business_category || "business")
     : biz.business_type || "restaurant";
 
+  const exactBusinessName = biz.name.trim();
   const aspectLabel = tags.length ? tags.join(", ") : "overall experience";
   const ratingWord = stars === 5 ? "absolutely loved" : stars === 4 ? "really enjoyed" : "had a good experience at";
 
-  const systemPrompt = `You are a real customer writing a genuine Google Maps review. You write in natural, conversational Indian English — the way a real person would type on their phone. Your reviews feel authentic, varied, and human.
+  const featuredProducts = biz.products
+    ? biz.products.split(",").map(p => p.trim()).filter(Boolean)
+    : [];
 
-STRICT RULES:
-- Output ONLY valid JSON: { "reviews": ["review1", "review2", "review3"] }
-- Each review must be COMPLETELY DIFFERENT in structure, tone, opening, and style
-- Review 1: casual and short (1-2 sentences, like someone typed it quickly on their phone)
-- Review 2: detailed and specific (3-4 sentences, mentions specific aspects or items)
-- Review 3: story-like or emotional (2-3 sentences, personal feel, recommendation)
-- Never start two reviews with the same word or phrase
-- Never use the same sentence structure twice
-- Use natural Indian English — mix of formal and casual is fine
-- Occasionally use phrases like "honestly", "must say", "totally", "definitely", "hands down"
-- Weave in SEO keywords and products ONLY if they fit naturally — never force them
-- No hashtags, no emojis, no AI mentions, no mention of QR or prompts
-- No corporate language like "exceptional", "impeccable", "delightful experience"
-- Sound like a real person, not a marketing brochure
-- Match the review context to the business type`;
+  const keywords = biz.keywords
+    ? biz.keywords.split(",").map(k => k.trim()).filter(Boolean)
+    : [];
 
-  const userPrompt = `Write 3 Google reviews for this business:
+  const cityName = biz.address
+    ? biz.address.split(",").slice(-2).join(",").trim()
+    : "India";
 
-Business name: ${biz.name}
-Business type: ${businessTypeLabel}
-Location: ${biz.address || "India"}
-Star rating given: ${stars} stars
-Customer highlighted: ${aspectLabel}
-SEO keywords (use naturally if possible): ${biz.keywords || "none"}
-Featured items to mention (only if fits naturally): ${biz.products || "none"}
+  const systemPrompt = `You are two experts combined into one:
 
-The customer ${ratingWord} ${biz.name}. Make each review feel like it was written by a different person:
-- Review 1: A busy person who types quickly — short, punchy, direct
-- Review 2: A detailed person who explains their experience — specific, informative
-- Review 3: An emotional person who wants to recommend — warm, personal, encouraging
+1. A Google Local SEO Expert who knows exactly how Google ranks businesses based on review content — keyword density, recency signals, location mentions, service/product specificity, and review length patterns that Google's algorithm rewards.
 
-All 3 must sound like genuine ${businessTypeLabel} customers, not marketing copy.`;
+2. A Human Behavior Specialist who understands how real customers write reviews — their vocabulary, hesitations, enthusiasm levels, typing habits, and the authentic imperfections that make reviews feel genuine.
+
+Your job: Write Google reviews that simultaneously:
+- Rank the business higher on Google Maps through smart SEO signals
+- Pass Google's fake review detection as 100% human-written
+- Feel completely authentic to anyone reading them
+
+ABSOLUTE RULES — NEVER BREAK:
+1. Business name is "${exactBusinessName}" — use EXACTLY this name every time, never shorten or change it
+2. Only mention food/products from this list: [${featuredProducts.join(", ")}] — if list is empty, speak generally, NEVER invent dish names
+3. Output ONLY valid JSON: { "reviews": ["review1", "review2", "review3"] }
+4. Never use corporate words: exceptional, impeccable, delightful, exquisite, commendable
+5. No hashtags, no emojis, no mention of QR codes or AI
+6. Never abbreviate city names — use full name or skip
+7. Never start two reviews with the same word or phrase
+8. Never hallucinate — only use information provided
+9. Each review must have a completely different tone, vocabulary, sentence length, and personality
+10. Weave in SEO keywords naturally — they must flow in conversation, never feel stuffed`;
+
+  const userPrompt = `Write 3 Google Maps reviews optimized for both SEO ranking and human authenticity.
+
+BUSINESS DETAILS:
+- Exact name: ${exactBusinessName}
+- Type: ${businessTypeLabel}
+- City/Area: ${cityName}
+- Star rating: ${stars}/5
+- Customer highlighted: ${aspectLabel}
+- SEO keywords to weave in naturally: ${keywords.length ? keywords.join(", ") : "none provided"}
+- Menu items/products (ONLY use these, never invent): ${featuredProducts.length ? featuredProducts.join(", ") : "do not mention specific items"}
+
+The customer ${ratingWord} ${exactBusinessName}.
+
+REVIEW SPECIFICATIONS:
+
+Review 1 — THE QUICK TEXTER
+Tone: Casual, fast, like typed on phone in 30 seconds
+Length: 1-2 short sentences maximum
+Personality: Young, busy, informal
+SEO goal: Include business name + one keyword naturally
+Style: May have minor imperfections like "honestly" or "tbh" or "literally"
+Example feel: "Honestly one of the best places I've been to in [city]. The [aspect] was on point — will definitely be back."
+
+Review 2 — THE DETAILED REVIEWER  
+Tone: Informative, balanced, thoughtful
+Length: 3-4 sentences
+Personality: Someone who reads reviews before visiting, now giving back
+SEO goal: Include business name + location + 2 keywords + specific aspects + product mention if available
+Style: Structured but not robotic — uses transitions like "what stood out", "also worth mentioning", "on top of that"
+Example feel: Describes their visit step by step, mentions what they ordered, comments on service and ambiance separately
+
+Review 3 — THE STORYTELLER
+Tone: Warm, personal, emotional
+Length: 2-3 sentences
+Personality: Someone who had a memorable experience and wants to share it
+SEO goal: Include business name + recommendation phrase + location signal
+Style: Starts with a personal context ("Was here for...", "Took my family...", "Came here after..."), ends with strong recommendation
+Example feel: Personal story hook → highlight → strong CTA to visit
+
+IMPORTANT: All 3 reviews must feel like they were written by completely different people on different days. Vary sentence lengths, vocabulary complexity, and emotional temperature across the three reviews.`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
-      temperature: 1.0,
+      temperature: 0.9,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
