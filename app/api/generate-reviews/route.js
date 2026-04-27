@@ -8,24 +8,44 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Randomized persona seeds — forces structural variety every generation
 const PERSONA_SETS = [
   {
-    p1: { style: "A college student who types fast and keeps it real. 1-2 short sentences. Casual slang allowed. No punctuation perfection needed." },
-    p2: { style: "A working professional in their 30s. Visits for lunch/dinner. 3-4 well-structured sentences. Mentions specific details about food, service, ambiance separately." },
-    p3: { style: "A family person who came with spouse or kids. Warm and personal. 2-3 sentences. Starts with context of visit, ends with strong recommendation." },
+    p1: "A young local who keeps reviews short and honest. 1-2 sentences max. Casual tone, no fluff.",
+    p2: "A working professional who visits restaurants regularly. Writes 3-4 sentences. Mentions specific details — what they ordered, how the service was, whether they'd return.",
+    p3: "Someone who came with family or friends. Warm but honest. 2-3 sentences. Shares personal context and gives a clear verdict.",
   },
   {
-    p1: { style: "A foodie who reviews places regularly. Very direct, confident tone. 1-2 punchy sentences. Gets straight to the point." },
-    p2: { style: "A first-time visitor who did research before coming. Shares whether it lived up to expectations. 3-4 sentences. Thoughtful and balanced." },
-    p3: { style: "Someone who was pleasantly surprised. Came with low expectations, left impressed. 2-3 sentences. Conversational and genuine." },
+    p1: "A regular diner who gives straight opinions. 1-2 punchy sentences. Direct and confident.",
+    p2: "A first-time visitor who researched before coming. 3-4 sentences. Shares whether it matched expectations, what stood out good or bad.",
+    p3: "Someone who had a mixed or memorable experience. 2-3 sentences. Personal angle, honest conclusion.",
   },
   {
-    p1: { style: "A local resident who knows the area well. Compares it favorably to other spots. 1-2 sentences. Confident recommendation." },
-    p2: { style: "A detail-oriented reviewer. Notes specific things: what they ordered, how long it took, how staff behaved. 3-4 sentences. Honest and specific." },
-    p3: { style: "Someone celebrating a small occasion — birthday, date, promotion. Emotional and warm. 2-3 sentences. Personal story angle." },
+    p1: "A college student who reviews quickly from their phone. 1-2 sentences. Real language, no corporate tone.",
+    p2: "A detail-focused reviewer. 3-4 sentences. Notes specific things: wait time, food quality, staff attitude, value.",
+    p3: "Someone celebrating or visiting for a reason. 2-3 sentences. Emotional but grounded. Honest recommendation.",
   },
 ];
+
+const TONE_BY_STARS = {
+  5: {
+    overall: "The customer had an excellent experience and wants to strongly recommend this place.",
+    sentiment: "enthusiastic and positive — they loved everything",
+    honesty: "No negatives needed. Pure recommendation.",
+    closingStyle: "Strong 'must visit' recommendation.",
+  },
+  4: {
+    overall: "The customer had a really good experience with one small thing that could be better.",
+    sentiment: "positive but grounded — enjoyed it, one minor note",
+    honesty: "Mostly positive. One small constructive observation is fine but not required.",
+    closingStyle: "Recommend it, with slight nuance.",
+  },
+  3: {
+    overall: "The customer had a decent but imperfect experience. They see potential but had clear issues.",
+    sentiment: "honest and balanced — some good, some not so good",
+    honesty: "Be honest. Mention what was good AND what needs improvement. Do NOT write falsely positive reviews for 3-star experiences. The review should reflect real mixed feelings.",
+    closingStyle: "Cautious recommendation — 'worth trying but...' or 'could be better'.",
+  },
+};
 
 export async function POST(request) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -99,66 +119,64 @@ export async function POST(request) {
     : "India";
 
   const aspectLabel = tags.length ? tags.join(", ") : "overall experience";
-  const ratingWord = stars === 5 ? "absolutely loved" : stars === 4 ? "really enjoyed" : "had a good experience at";
-
-  // Customer note takes full control of food mentions
-  const customerMentionedFood = customerNote.length > 0;
-  const productLine = customerMentionedFood
-    ? `The customer already mentioned specific food/details in their note. DO NOT add any product from the profile list — only use what the customer said.`
-    : featuredProducts.length > 0
-      ? `If mentioning food feels natural, pick ONE from this list only: [${featuredProducts.join(", ")}]. Never mention more than one. If it doesn't fit naturally, skip it entirely.`
-      : `Do not mention any specific dish or product names.`;
-
+  const tone = TONE_BY_STARS[stars];
   const personas = pick(PERSONA_SETS);
 
-  const systemPrompt = `You write Google Maps reviews that rank businesses higher on Google Search while sounding 100% human-written. You understand both SEO and human psychology.
+  // Customer note takes full priority over product list for food mentions
+  const customerMentionedFood = customerNote.length > 0;
+  const productGuidance = customerMentionedFood
+    ? `The customer mentioned specific details in their note. Do NOT reference any product from the profile — only use what the customer said.`
+    : featuredProducts.length > 0
+      ? `You may mention ONE product from this list only if it fits naturally in the review: [${featuredProducts.join(", ")}]. Never force it. Never mention more than one per review.`
+      : `Do not mention any specific dish or product names.`;
 
-Your reviews must:
-- Sound like real people wrote them — different ages, different writing styles, different levels of detail
-- Include location and keyword signals naturally woven into the text — never stuffed
-- Be completely unique in structure and vocabulary each time — no templates, no repeated phrases
-- Pass any AI detection tool as human-written
+  // Keyword guidance — natural context, never dropped in raw
+  const keywordGuidance = keywords.length > 0
+    ? `SEO keywords to include naturally (1 per review max, only if it fits as part of a real sentence — never as a standalone phrase or title case label): ${keywords.join(", ")}`
+    : `No keywords provided. Just use the business name and city naturally.`;
 
-ABSOLUTE RULES:
-1. Business name is "${exactBusinessName}" — use EXACTLY this, never shorten or alter
+  const systemPrompt = `You write authentic Google Maps reviews for local businesses in India. Your reviews must read as if written by real customers — not AI, not a marketing agency.
+
+ABSOLUTE RULES — NEVER BREAK:
+1. Business name: "${exactBusinessName}" — use EXACTLY this every time, never shorten or alter
 2. Output ONLY valid JSON: { "reviews": ["r1", "r2", "r3"] }
-3. Banned words: exceptional, impeccable, delightful, exquisite, commendable, vibrant, cozy, nestled, testament, gem, hidden gem
+3. BANNED words and phrases: exceptional, impeccable, delightful, exquisite, commendable, vibrant, cozy, nestled, testament, gem, hidden gem, best restaurant in [city] (as a label), best bar in [city] (as a label). Never use keywords as title-case labels — only as natural sentence fragments.
 4. No hashtags, no emojis, no mention of apps or QR codes
-5. Each review must start with a different word — no two reviews can share the same opening word
-6. Never hallucinate facts not provided
-7. ${productLine}
-8. CUSTOMER NOTE RULE: If a customer note is provided, the specific details in it (dish name, wait time, incident) MUST appear word-for-word or near-verbatim in at least 2 of the 3 reviews. This overrides everything else.`;
+5. Never start two reviews with the same word
+6. Never contradict the star rating — a 3-star review must NOT read like a 5-star review
+7. ${productGuidance}
+8. CUSTOMER NOTE IS MANDATORY: If provided, the exact details (dish, wait time, incident) MUST appear naturally in at least 2 of 3 reviews. Do not ignore or generalize.
+9. ${keywordGuidance}
+10. Never use city abbreviations — write the full city name or skip it`;
 
   const userPrompt = `Write 3 Google Maps reviews for ${exactBusinessName}, a ${businessTypeLabel} in ${cityName}.
 
-FACTS:
-- Star rating given: ${stars}/5
-- Customer highlighted: ${aspectLabel}
-- The customer ${ratingWord} ${exactBusinessName}
-- SEO keywords to weave in naturally (use 1-2 per review, never force them): ${keywords.length ? keywords.join(", ") : "none — just use business name and location"}
+STAR RATING: ${stars}/5
+TONE REQUIRED: ${tone.sentiment}
+SITUATION: ${tone.overall}
+HONESTY LEVEL: ${tone.honesty}
+CLOSING STYLE: ${tone.closingStyle}
+
+CUSTOMER HIGHLIGHTED: ${aspectLabel}
 ${customerNote ? `
-CUSTOMER'S OWN EXPERIENCE (treat this as a real memory — use these exact details in at least 2 reviews):
+CUSTOMER'S EXACT EXPERIENCE — USE THESE DETAILS IN AT LEAST 2 REVIEWS:
 "${customerNote}"
+Reference the specific details from this note authentically. If they mentioned a wait time, use it. If they mentioned a dish, use that exact name.
 ` : ""}
 
-REVIEW PERSONAS — write each review as this exact type of person:
+Write each review as a completely different type of person:
 
-Review 1 — ${personas.p1.style}
-SEO goal: Include business name + city + one keyword naturally.
+Review 1 — ${personas.p1}
+Review 2 — ${personas.p2}  
+Review 3 — ${personas.p3}
 
-Review 2 — ${personas.p2.style}
-SEO goal: Include business name + city + 2 keywords + specific detail from customer note if provided.
-
-Review 3 — ${personas.p3.style}
-SEO goal: Include business name + strong recommendation phrase + city mention.
-
-QUALITY BAR: Each review should feel like it could have been posted on Google by a real person today. Read each one before outputting — if it sounds like AI or a template, rewrite it.`;
+FINAL CHECK before outputting: Read each review. Ask — does this match a ${stars}-star experience? Does it sound like a real person wrote it? Is the tone consistent with the rating? If not, rewrite before outputting.`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
-      temperature: 0.95,
+      temperature: 0.92,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
