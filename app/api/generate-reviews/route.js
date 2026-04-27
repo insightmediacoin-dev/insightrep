@@ -91,7 +91,7 @@ Your job: Write Google reviews that simultaneously:
 
 ABSOLUTE RULES — NEVER BREAK:
 1. Business name is "${exactBusinessName}" — use EXACTLY this name every time, never shorten or change it
-2. Only mention food/products from this list: [${featuredProducts.join(", ")}] — if list is empty, speak generally, NEVER invent dish names
+2. Only mention food/products from this list: [${featuredProducts.join(", ")}] — if list is empty, speak generally, NEVER invent dish names UNLESS the customer mentioned a specific dish in their own words — in that case use exactly what they said
 3. Output ONLY valid JSON: { "reviews": ["review1", "review2", "review3"] }
 4. Never use corporate words: exceptional, impeccable, delightful, exquisite, commendable
 5. No hashtags, no emojis, no mention of QR codes or AI
@@ -100,7 +100,7 @@ ABSOLUTE RULES — NEVER BREAK:
 8. Never hallucinate — only use information provided
 9. Each review must have a completely different tone, vocabulary, sentence length, and personality
 10. Weave in SEO keywords naturally — they must flow in conversation, never feel stuffed
-11. If the customer provided their own words, weave them naturally into at least one review — do not copy verbatim, but honour the sentiment`;
+11. MANDATORY: If customer's own words are provided, you MUST reference that specific detail (exact dish name, wait time, specific incident, or whatever they mentioned) in at least 2 of the 3 reviews. This is non-negotiable — do not skip, generalize, or ignore it.`;
 
   const userPrompt = `Write 3 Google Maps reviews optimized for both SEO ranking and human authenticity.
 
@@ -112,7 +112,7 @@ BUSINESS DETAILS:
 - Customer highlighted: ${aspectLabel}
 - SEO keywords to weave in naturally: ${keywords.length ? keywords.join(", ") : "none provided"}
 - Menu items/products (ONLY use these, never invent): ${featuredProducts.length ? featuredProducts.join(", ") : "do not mention specific items"}
-- Customer's own words (weave naturally into at least one review, honour the sentiment, do not copy verbatim): ${customerNote || "none provided"}
+${customerNote ? `- ⚠️ CUSTOMER'S SPECIFIC EXPERIENCE (MANDATORY — must appear in at least 2 reviews, mention the exact detail they shared): "${customerNote}"` : ""}
 
 The customer ${ratingWord} ${exactBusinessName}.
 
