@@ -4,6 +4,48 @@ import { createAdminClient } from "@/lib/supabase-admin";
 
 const FREE_MONTHLY_LIMIT = 10;
 
+// Random pool helpers — picked at runtime so every generation is structurally different
+const OPENERS = [
+  "Was here last weekend and",
+  "Visited with my family and",
+  "Came here for lunch and",
+  "Tried this place for the first time and",
+  "Been meaning to visit for a while —",
+  "Stopped by on a whim and",
+  "Came here after work and",
+  "Took my friends here and",
+  "Had dinner here recently and",
+  "Visited on a weekday evening and",
+  "My colleague recommended this place —",
+  "Finally tried this after seeing it online and",
+];
+
+const CLOSERS = [
+  "Will definitely be back.",
+  "Highly recommend if you're nearby.",
+  "Worth a visit for sure.",
+  "Would recommend to anyone in the area.",
+  "10/10 would visit again.",
+  "Solid spot — will return.",
+  "One of my go-to places now.",
+  "Good experience overall.",
+  "Would not hesitate to come back.",
+  "Definitely going back soon.",
+];
+
+const FILLER_PHRASES = [
+  "what stood out was",
+  "the highlight for me was",
+  "honestly the best part was",
+  "I particularly enjoyed",
+  "worth mentioning is",
+  "what really impressed me was",
+];
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 export async function POST(request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return NextResponse.json({ ok: false, message: "OPENAI_API_KEY is not set." }, { status: 503 });
@@ -64,7 +106,7 @@ export async function POST(request) {
 
   const exactBusinessName = biz.name.trim();
   const aspectLabel = tags.length ? tags.join(", ") : "overall experience";
-  const ratingWord = stars === 5 ? "absolutely loved" : stars === 4 ? "really enjoyed" : "had a good experience at";
+  const ratingWord = stars === 5 ? "absolutely loved" : stars === 4 ? "really enjoyed" : "had a decent experience at";
 
   const featuredProducts = biz.products
     ? biz.products.split(",").map(p => p.trim()).filter(Boolean)
@@ -78,77 +120,85 @@ export async function POST(request) {
     ? biz.address.split(",").slice(-2).join(",").trim()
     : "India";
 
-  const systemPrompt = `You are two experts combined into one:
+  // Pick random variation seeds to force structural diversity
+  const opener1 = pick(OPENERS);
+  const opener2 = pick(OPENERS.filter(o => o !== opener1));
+  const opener3 = pick(OPENERS.filter(o => o !== opener1 && o !== opener2));
+  const closer1 = pick(CLOSERS);
+  const closer2 = pick(CLOSERS.filter(c => c !== closer1));
+  const closer3 = pick(CLOSERS.filter(c => c !== closer1 && c !== closer2));
+  const filler1 = pick(FILLER_PHRASES);
+  const filler2 = pick(FILLER_PHRASES.filter(f => f !== filler1));
 
-1. A Google Local SEO Expert who knows exactly how Google ranks businesses based on review content — keyword density, recency signals, location mentions, service/product specificity, and review length patterns that Google's algorithm rewards.
+  // Product guidance — only suggest if customer note doesn't override
+  const productGuidance = featuredProducts.length > 0
+    ? `You MAY reference one of these products IF it fits naturally and the customer note does not already mention a specific dish: [${featuredProducts.join(", ")}]. Never force a product mention. Never mention more than one product per review.`
+    : `Do not mention any specific dish names — speak generally about the food.`;
 
-2. A Human Behavior Specialist who understands how real customers write reviews — their vocabulary, hesitations, enthusiasm levels, typing habits, and the authentic imperfections that make reviews feel genuine.
+  const systemPrompt = `You are a review-writing specialist who writes authentic, human Google reviews for local businesses. Your reviews must:
 
-Your job: Write Google reviews that simultaneously:
-- Rank the business higher on Google Maps through smart SEO signals
-- Pass Google's fake review detection as 100% human-written
-- Feel completely authentic to anyone reading them
+- Sound like they were written by real, different people on different days
+- Vary completely in structure, vocabulary, sentence length, and emotional tone across all 3
+- Be impossible to pattern-match or flag as AI-generated
+- Include natural SEO signals without keyword stuffing
 
-ABSOLUTE RULES — NEVER BREAK:
-1. Business name is "${exactBusinessName}" — use EXACTLY this name every time, never shorten or change it
-2. Only mention food/products from this list: [${featuredProducts.join(", ")}] — if list is empty, speak generally, NEVER invent dish names UNLESS the customer mentioned a specific dish in their own words — in that case use exactly what they said
-3. Output ONLY valid JSON: { "reviews": ["review1", "review2", "review3"] }
-4. Never use corporate words: exceptional, impeccable, delightful, exquisite, commendable
-5. No hashtags, no emojis, no mention of QR codes or AI
-6. Never abbreviate city names — use full name or skip
-7. Never start two reviews with the same word or phrase
-8. Never hallucinate — only use information provided
-9. Each review must have a completely different tone, vocabulary, sentence length, and personality
-10. Weave in SEO keywords naturally — they must flow in conversation, never feel stuffed
-11. MANDATORY: If customer's own words are provided, you MUST reference that specific detail (exact dish name, wait time, specific incident, or whatever they mentioned) in at least 2 of the 3 reviews. This is non-negotiable — do not skip, generalize, or ignore it.`;
+HARD RULES — NEVER BREAK:
+1. Business name: "${exactBusinessName}" — use EXACTLY as written, every time
+2. Output ONLY valid JSON: { "reviews": ["review1", "review2", "review3"] }
+3. No corporate/AI words: exceptional, impeccable, delightful, exquisite, commendable, vibrant, testament
+4. No hashtags, no emojis, no mention of QR codes or apps
+5. Never start two reviews with the same word
+6. Each review must feel written by a completely different person — different vocabulary level, different sentence rhythm, different emotional temperature
+7. CUSTOMER NOTE IS HIGHEST PRIORITY: If the customer provided specific details (dish name, wait time, specific incident), those MUST appear authentically in at least 2 of the 3 reviews. Do not ignore, skip, or generalize these details. Use the exact dish name or detail they mentioned.
+8. ${productGuidance}
+9. Never invent details not provided`;
 
-  const userPrompt = `Write 3 Google Maps reviews optimized for both SEO ranking and human authenticity.
+  const userPrompt = `Write 3 Google Maps reviews for this business. Each must feel written by a completely different person.
 
-BUSINESS DETAILS:
-- Exact name: ${exactBusinessName}
+BUSINESS:
+- Name: ${exactBusinessName}
 - Type: ${businessTypeLabel}
-- City/Area: ${cityName}
-- Star rating: ${stars}/5
+- City: ${cityName}
+- Rating: ${stars}/5 stars
 - Customer highlighted: ${aspectLabel}
-- SEO keywords to weave in naturally: ${keywords.length ? keywords.join(", ") : "none provided"}
-- Menu items/products (ONLY use these, never invent): ${featuredProducts.length ? featuredProducts.join(", ") : "do not mention specific items"}
-${customerNote ? `- ⚠️ CUSTOMER'S SPECIFIC EXPERIENCE (MANDATORY — must appear in at least 2 reviews, mention the exact detail they shared): "${customerNote}"` : ""}
+- SEO keywords (use 1-2 naturally per review, never force): ${keywords.length ? keywords.join(", ") : "none"}
+${customerNote ? `
+⚠️ CUSTOMER'S OWN EXPERIENCE — MANDATORY IN AT LEAST 2 REVIEWS:
+"${customerNote}"
+You MUST reference the specific details from this note (exact dish, wait time, or whatever they mentioned). Do not paraphrase into something generic. If they said "chicken tikka", write "chicken tikka" — not "the food" or a different dish.
+` : ""}
 
 The customer ${ratingWord} ${exactBusinessName}.
 
-REVIEW SPECIFICATIONS:
+REVIEW STRUCTURE GUIDE (follow these openers and closers exactly, fill the middle naturally):
 
-Review 1 — THE QUICK TEXTER
-Tone: Casual, fast, like typed on phone in 30 seconds
-Length: 1-2 short sentences maximum
-Personality: Young, busy, informal
-SEO goal: Include business name + one keyword naturally
-Style: May have minor imperfections like "honestly" or "tbh" or "literally"
-Example feel: "Honestly one of the best places I've been to in [city]. The [aspect] was on point — will definitely be back."
+Review 1 — SHORT & CASUAL (1-2 sentences max, like a quick phone text):
+Start with: "${opener1}"
+End with: "${closer1}"
+Tone: Young, informal, fast. No full sentences required.
+SEO: Business name + one keyword only.
 
-Review 2 — THE DETAILED REVIEWER  
-Tone: Informative, balanced, thoughtful
-Length: 3-4 sentences
-Personality: Someone who reads reviews before visiting, now giving back
-SEO goal: Include business name + location + 2 keywords + specific aspects + product mention if available
-Style: Structured but not robotic — uses transitions like "what stood out", "also worth mentioning", "on top of that"
-Example feel: Describes their visit step by step, mentions what they ordered, comments on service and ambiance separately
+Review 2 — DETAILED & BALANCED (3-4 sentences):
+Start with: "${opener2}"
+${filler1} [specific aspect or customer note detail].
+End with: "${closer2}"
+Tone: Thoughtful, like someone who researches before visiting. Mentions specific details.
+SEO: Business name + city + 1-2 keywords + customer note detail if provided.
 
-Review 3 — THE STORYTELLER
-Tone: Warm, personal, emotional
-Length: 2-3 sentences
-Personality: Someone who had a memorable experience and wants to share it
-SEO goal: Include business name + recommendation phrase + location signal
-Style: Starts with a personal context ("Was here for...", "Took my family...", "Came here after..."), ends with strong recommendation
-Example feel: Personal story hook → highlight → strong CTA to visit
+Review 3 — PERSONAL & WARM (2-3 sentences):
+Start with: "${opener3}"
+${filler2} [highlight — must include customer note detail if provided].
+End with: "${closer3}"
+Tone: Conversational, genuine, slightly emotional. Strong recommendation.
+SEO: Business name + recommendation phrase + location.
 
-IMPORTANT: All 3 reviews must feel like they were written by completely different people on different days. Vary sentence lengths, vocabulary complexity, and emotional temperature across the three reviews.`;
+CRITICAL: All 3 must read as if written by completely different people. Vary: sentence length, vocabulary complexity, punctuation style, and emotional warmth.`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
-      temperature: 0.9,
+      temperature: 1.1,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
