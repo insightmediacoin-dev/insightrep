@@ -78,6 +78,7 @@ export default function CustomerReviewPage() {
   const [rating, setRating] = useState(null);
   const [hoverRating, setHoverRating] = useState(null);
   const [aspects, setAspects] = useState([]);
+  const [customNote, setCustomNote] = useState("");
   const [reviews, setReviews] = useState([]);
   const [selected, setSelected] = useState(0);
   const [step, setStep] = useState("loading");
@@ -138,7 +139,7 @@ export default function CustomerReviewPage() {
       const res = await fetch("/api/generate-reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessId, rating, aspects }),
+        body: JSON.stringify({ businessId, rating, aspects, customNote: customNote.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -221,6 +222,24 @@ export default function CustomerReviewPage() {
               })}
             </div>
 
+            {/* Optional custom note */}
+            <div className="space-y-2">
+              <label className="text-sm text-text-muted">
+                Anything specific you'd like to mention? <span className="text-white/30">(Optional)</span>
+              </label>
+              <textarea
+                value={customNote}
+                onChange={(e) => setCustomNote(e.target.value)}
+                placeholder="e.g. The pasta was amazing, staff was very welcoming…"
+                rows={3}
+                maxLength={300}
+                className="w-full rounded-2xl border border-white/10 bg-navy-muted/40 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-accent focus:outline-none resize-none transition"
+              />
+              {customNote.length > 0 && (
+                <p className="text-right text-xs text-white/20">{customNote.length}/300</p>
+              )}
+            </div>
+
             {limitReached && (
               <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5 text-center space-y-2">
                 <p className="text-sm font-semibold text-accent">Monthly limit reached</p>
@@ -268,8 +287,6 @@ export default function CustomerReviewPage() {
 
         {step === "success" && (
           <section className="mt-10 flex flex-col items-center gap-5 text-center">
-
-            {/* Big copied confirmation */}
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20 text-5xl animate-bounce">
               ✅
             </div>
@@ -278,7 +295,6 @@ export default function CustomerReviewPage() {
               <p className="text-sm text-text-muted">Your review is ready — just paste it on Google.</p>
             </div>
 
-            {/* Copied review shown again clearly */}
             <div className="w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-left space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-widest text-accent">Your copied review</p>
@@ -287,7 +303,6 @@ export default function CustomerReviewPage() {
               <p className="text-sm text-white leading-relaxed">{reviews[selected]}</p>
             </div>
 
-            {/* Step by step instructions */}
             <div className="w-full rounded-2xl border border-white/10 bg-navy-muted/40 p-4 text-left space-y-3">
               <p className="text-xs font-bold uppercase tracking-widest text-text-muted">3 steps to post</p>
               <div className="space-y-2">
@@ -306,7 +321,6 @@ export default function CustomerReviewPage() {
               </div>
             </div>
 
-            {/* Countdown button */}
             <button
               type="button"
               onClick={() => { window.location.href = business?.gmb_link; }}
@@ -314,7 +328,6 @@ export default function CustomerReviewPage() {
               <span>Opening Google in {countdown}s — tap to open now</span>
             </button>
 
-            {/* Progress bar */}
             <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
               <div
                 className="h-full bg-accent rounded-full transition-all duration-1000"
@@ -325,7 +338,6 @@ export default function CustomerReviewPage() {
             <p className="text-xs text-text-muted">
               Review not pasting? Long press inside the Google text box and tap Paste.
             </p>
-
           </section>
         )}
 

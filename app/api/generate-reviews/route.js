@@ -16,7 +16,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, message: "Invalid JSON." }, { status: 400 });
   }
 
-  const { businessId, rating, aspects } = body;
+  const { businessId, rating, aspects, customNote } = body;
   if (!businessId || typeof businessId !== "string")
     return NextResponse.json({ ok: false, message: "businessId required." }, { status: 400 });
 
@@ -25,6 +25,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, message: "Rating must be 3, 4, or 5." }, { status: 400 });
 
   const tags = Array.isArray(aspects) ? aspects.filter(a => typeof a === "string") : [];
+  const customerNote = typeof customNote === "string" ? customNote.trim().slice(0, 300) : "";
 
   const { data: biz, error } = await admin
     .from("businesses")
@@ -98,7 +99,8 @@ ABSOLUTE RULES — NEVER BREAK:
 7. Never start two reviews with the same word or phrase
 8. Never hallucinate — only use information provided
 9. Each review must have a completely different tone, vocabulary, sentence length, and personality
-10. Weave in SEO keywords naturally — they must flow in conversation, never feel stuffed`;
+10. Weave in SEO keywords naturally — they must flow in conversation, never feel stuffed
+11. If the customer provided their own words, weave them naturally into at least one review — do not copy verbatim, but honour the sentiment`;
 
   const userPrompt = `Write 3 Google Maps reviews optimized for both SEO ranking and human authenticity.
 
@@ -110,6 +112,7 @@ BUSINESS DETAILS:
 - Customer highlighted: ${aspectLabel}
 - SEO keywords to weave in naturally: ${keywords.length ? keywords.join(", ") : "none provided"}
 - Menu items/products (ONLY use these, never invent): ${featuredProducts.length ? featuredProducts.join(", ") : "do not mention specific items"}
+- Customer's own words (weave naturally into at least one review, honour the sentiment, do not copy verbatim): ${customerNote || "none provided"}
 
 The customer ${ratingWord} ${exactBusinessName}.
 
