@@ -236,9 +236,9 @@ If any answer is NO — rewrite that review before outputting.`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       response_format: { type: "json_object" },
-      temperature: 0.93,
+      temperature: 0.85,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
