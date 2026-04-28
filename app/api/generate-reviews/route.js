@@ -8,67 +8,83 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// 9 LOCAL archetypes — rotated randomly, grouped in 3 pools of 3
-// Each archetype is a real city-dweller, not a tourist or blogger
+// Strip emojis from generated reviews
+function stripEmojis(text) {
+  return text
+    .replace(/[\u{1F300}-\u{1FFFF}]/gu, '')
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')
+    .replace(/[\u{1F000}-\u{1F02F}]/gu, '')
+    .replace(/[\u{1F0A0}-\u{1F0FF}]/gu, '')
+    .replace(/[\u{1F100}-\u{1F1FF}]/gu, '')
+    .replace(/[\u{1F200}-\u{1F2FF}]/gu, '')
+    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')
+    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')
+    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')
+    .trim();
+}
+
+// 9 LOCAL archetypes in 3 pools — rotated randomly each generation
+// All are city-dwellers, not tourists
 const ARCHETYPE_POOLS = [
   [
     {
       name: "The Casual Local",
-      voice: "Lives nearby. Been here before or heard about it from friends. Types like sending a WhatsApp message — no grammar pressure, no structure. Just says what they felt. 'The biryani was fire ngl' kind of energy. Short, real, punchy.",
-      length: "1-2 sentences only. Under 25 words.",
-      opener: "Start with what they ate OR what stood out. Never 'I visited' or 'We went'.",
+      voice: "Lives in the city, comes here regularly or has heard about it from friends. Writes exactly like they would type a WhatsApp message to a friend — no grammar pressure, no structure, just what they felt. Short, real, direct. Energy is confident and unbothered.",
+      length: "1-2 sentences only. Maximum 25 words. No more.",
+      opener: "Start with what they ate, what stood out, or a direct verdict. NEVER start with 'I visited', 'We went', 'I recently', 'We decided to'.",
     },
     {
       name: "The Working Professional",
-      voice: "Comes here for team lunches, client meetings, or quick dinners after work. Focused on reliability, service speed, and value for money. Structured but not stiff. Mentions if it works for work occasions.",
+      voice: "Works in the city, visits for team lunches, client meetings, or after-work dinners. Values speed, reliability, and consistent quality. Writes practically — mentions the occasion, what worked, whether it suits a work setting. Not a foodie. A busy person who knows what they need.",
       length: "3-4 sentences. Practical and specific.",
-      opener: "Start with the occasion: 'Came here for a team outing' or 'Been coming for work lunches'.",
+      opener: "Start with the work occasion: 'Came here for a team lunch', 'Been bringing clients here', 'Stopped by after work'. Never start with 'I recently visited'.",
     },
     {
-      name: "The Weekend Family Person",
-      voice: "Brought family — parents, kids, or partner. Cares about portions, variety, and comfort. Warm tone. Naturally mentions who they came with. Ends with whether the family would come back.",
-      length: "2-3 sentences. Warm and natural.",
-      opener: "Start with who they brought or why they picked this place for the family.",
+      name: "The Family Person",
+      voice: "Brought family — partner, kids, or parents. Cares about portion size, variety on the menu, comfort, and staff patience. Warm and natural tone. Mentions who they came with without making it sound like a travel log. Ends with whether the family would return.",
+      length: "2-3 sentences. Warm and grounded.",
+      opener: "Start with who they brought or the occasion: 'Took the family here', 'Came with my parents', 'Brought the kids'. Not 'We decided to visit'.",
     },
   ],
   [
     {
-      name: "The College Crowd",
-      voice: "Young local, tight budget, but knows good food. Honest and unfiltered. No over-praising. Uses phrases like 'actually really good', 'didn't expect much but', 'would def come back'. Energy is chill.",
-      length: "1-2 sentences. Casual, real, under 30 words.",
-      opener: "Start with expectation vs reality OR just what they liked most.",
+      name: "The Young Local",
+      voice: "19-26 years old, lives in the city, knows the area well, budget-conscious but values quality. Honest and unfiltered without being negative. Uses natural phrases like 'actually really good', 'not bad at all', 'would come back for sure'. Chill energy. Does not over-praise.",
+      length: "1-2 sentences only. Maximum 30 words. Casual and real.",
+      opener: "Start with what impressed them OR a quick expectation vs reality. Never 'I recently' or 'We visited' type openers.",
     },
     {
       name: "The Repeat Visitor",
-      voice: "Has been multiple times. Writes with authority — not discovering the place, confirming it. Knows the menu. Mentions their usual order or what they always get. Confident, not gushing.",
+      voice: "Has been here multiple times. Speaks with authority — not discovering the place, confirming its quality. Knows the menu, has a usual order, compares this visit to past ones. Confident tone, not gushing. Makes it clear they live here and come back because it's worth it.",
       length: "3-4 sentences. Specific and informed.",
-      opener: "Start with the fact they keep coming back: 'Third time here' or 'Been coming for months'.",
+      opener: "Start with the fact they keep returning: 'Third time here now', 'Been coming for months', 'Always end up back here'.",
     },
     {
-      name: "The Evening Out Person",
-      voice: "Came for a relaxed evening — date, group, or solo. Writes about the full experience: food, vibe, service. Ends with a specific recommendation: 'great for a date', 'good for large groups', 'perfect chill spot'.",
+      name: "The Weekend Outing Person",
+      voice: "Came for a relaxed weekend meal or evening — date, group of friends, or solo wind-down. Writes about the full experience: food, vibe, how the evening felt. Ends with a specific recommendation tied to an occasion: 'great for a date', 'good for groups', 'perfect chill evening spot'.",
       length: "2-3 sentences. Experiential and warm.",
-      opener: "Start with the mood or occasion: 'Perfect for a chill Friday evening' or 'Came here for a birthday dinner'.",
+      opener: "Start with the mood or occasion: 'Good spot for a lazy Sunday lunch', 'Came here for a chill Friday evening', 'Took a friend here for her birthday'.",
     },
   ],
   [
     {
       name: "The No-Nonsense Regular",
-      voice: "Direct, experienced, seen many restaurants. Respects quality without overreacting. If something was good — says it plainly. Writes like an older local who doesn't waste words. Confident verdict.",
-      length: "1-2 sentences. Blunt and credible.",
-      opener: "Start with a direct verdict: 'Solid place', 'Good food, reasonable prices', 'Consistent as always'.",
+      voice: "Direct, confident, experienced. Has been to many restaurants in the city and knows what good looks like. Does not get excited easily. Gives a plain, honest verdict. Sounds like a 40-55 year old local who has options and chose this place because it delivers.",
+      length: "1-2 sentences only. Blunt and credible.",
+      opener: "Start with a direct verdict: 'Solid place', 'Good food, fair prices', 'Consistent as always', 'Reliable spot'.",
     },
     {
-      name: "The Office Area Dweller",
-      voice: "Works or lives close by. Goes there regularly — not for a special occasion but just because it's reliable. Mentions location naturally as a local would. Focused on consistency and whether it's a good regular spot.",
+      name: "The Office Area Regular",
+      voice: "Works or lives near the restaurant. Goes there not for special occasions but because it is a reliable everyday spot. Writes about consistency, whether it handles the lunch rush well, and if it is a dependable go-to. Mentions the area naturally without making it sound like a location review.",
       length: "3-4 sentences. Grounded and practical.",
-      opener: "Start with proximity or habit: 'Works near here and comes often' or 'Been a regular since it opened'.",
+      opener: "Start with the habit or proximity: 'Been a regular here since it opened', 'Works nearby and comes often', 'Go-to spot in the area'.",
     },
     {
-      name: "The Friend Group Person",
-      voice: "Came with a bunch of friends — birthday, catch-up, or random plan. Writes about how the restaurant handled a group. Mentions noise level, how accommodating the staff was, whether it was worth it for groups.",
-      length: "2-3 sentences. Social and upbeat.",
-      opener: "Start with the group context: 'Came here for a friend's birthday' or 'Visited with a big group'.",
+      name: "The Group Celebration Person",
+      voice: "Came with a group — birthday, anniversary, or a casual friends hangout. Writes about how the restaurant handled a crowd: table arrangements, if food came out together, noise level, staff attentiveness. Ends with whether they would bring a group back.",
+      length: "2-3 sentences. Social and honest.",
+      opener: "Start with the group context: 'Came here for a friend's birthday', 'Booked a table for 10', 'Visited with a large group'.",
     },
   ],
 ];
@@ -76,44 +92,46 @@ const ARCHETYPE_POOLS = [
 // Star rating emotional calibration
 const STAR_CALIBRATION = {
   5: {
-    sentiment: "absolutely loved it — everything exceeded expectations",
-    tone: "Pure positive. Genuine enthusiasm. Strong recommendation. Zero complaints.",
-    closing: "Clear 'will be back' or 'must visit' energy. High conviction.",
-    forbidden: "ZERO negatives. ZERO 'but'. ZERO 'however'. ZERO hedging. Nothing that remotely sounds like a complaint.",
+    sentiment: "absolutely loved the experience — everything was great",
+    tone: "Pure positive. Strong enthusiasm. Genuine recommendation. Zero complaints or hedging.",
+    closing: "Clear 'will be back' or strong recommendation. High conviction ending.",
+    forbidden: "ZERO negatives. ZERO 'but'. ZERO 'however'. ZERO hedging. ZERO qualifiers. Nothing that sounds remotely like a complaint or reservation.",
   },
   4: {
-    sentiment: "really enjoyed it — great experience overall",
-    tone: "Strongly positive. One very minor, calm, logistical observation is allowed but not required. Observation examples: 'gets busy on weekends', 'parking is a bit tricky', 'small waiting area'. NEVER mention food quality issues or slow service as a 4-star.",
-    closing: "Confidently recommend. Positive verdict.",
-    forbidden: "No food complaints. No service complaints. No 'disappointed'. Only minor logistical observations if truly natural.",
+    sentiment: "really enjoyed it — great experience overall with one small logistical note allowed",
+    tone: "Strongly positive throughout. One very minor, calm, logistical observation is optional. Allowed examples: 'gets busy on weekends so book in advance', 'parking nearby is limited', 'waiting area is small'. NEVER mention food quality issues, slow service, or staff as a 4-star observation.",
+    closing: "Confident positive recommendation. Clear verdict.",
+    forbidden: "ZERO food complaints. ZERO service complaints. ZERO 'disappointed'. ZERO 'expected better'. Only minor logistical notes — and only if completely natural.",
   },
   3: {
-    sentiment: "mixed honest experience — some things were good, some fell short",
-    tone: "Fair and balanced. Acknowledge both what worked and what didn't. Calm tone — not angry, not fake-positive. Like a friend telling you the truth about a place.",
-    closing: "'Worth trying once', 'has potential', 'decent for the price'. Never strong positive close.",
-    forbidden: "No 'amazing', 'best', 'must visit', 'highly recommend'. Tone must genuinely match 3 stars. Do NOT fake enthusiasm.",
+    sentiment: "honest mixed experience — some things worked, some fell short of expectations",
+    tone: "Fair and balanced. Calm — not angry, not fake-positive. Like a trusted friend telling you the honest truth about a place. Acknowledges both what worked and what did not.",
+    closing: "'Worth trying once', 'has potential', 'decent for the price but has room to improve'. NEVER a strong positive close. Never 'amazing', 'best', 'must visit'.",
+    forbidden: "ZERO fake enthusiasm. ZERO 'amazing', 'best', 'must visit', 'highly recommend'. The tone must genuinely match 3 stars — a fair, honest review from someone who was not blown away.",
   },
 };
 
-// Negative aspect handling — convert complaints into constructive mentions
+// Negative aspect handling rules
 const NEGATIVE_HANDLING = `
-HANDLING NEGATIVE ASPECTS OR NOTES:
-If the customer mentioned something negative, handle it like this based on star rating:
+CRITICAL — HOW TO HANDLE NEGATIVE ASPECTS OR CUSTOMER NOTES:
 
-5-STAR: Completely ignore any negative mentioned. Do not reference it. Focus only on positives.
+5-STAR REVIEWS:
+Completely ignore any negative mentioned. Do not reference it in any way. Focus entirely on positives.
 
-4-STAR: If a negative was mentioned, you may include ONE very calm, minor observation in ONE review only.
-  - NEVER say: "service was slow", "food was cold", "staff was rude", "long wait", "disappointing"  
-  - INSTEAD say: "gets a bit crowded during peak hours", "parking could be easier", "waiting area is small"
-  - The observation must sound like a minor inconvenience — NOT a complaint
-  - If the negative cannot be reframed as minor, ignore it entirely
+4-STAR REVIEWS:
+If a negative was mentioned, you may include ONE very minor, calm, logistical note in ONE review only.
+BANNED: "service was slow", "food was cold", "staff was rude", "waited too long", "very disappointing", "not worth it"
+ALLOWED: "gets busy during lunch hours", "parking can be tricky", "booking in advance is a good idea on weekends"
+The note must sound like a helpful tip — NOT a complaint. If the negative cannot be reframed as a helpful tip, ignore it entirely.
 
-3-STAR: Acknowledge honestly but CALMLY. The reviewer is fair — not angry.
-  - NEVER say: "terrible service", "worst experience", "disgusting", "will not return", "pathetic"
-  - INSTEAD say: "wait time was a bit longer than expected", "service could be more attentive", "food was okay but not their best", "has room to improve on consistency"
-  - One honest observation per review is enough — don't pile on negatives
+3-STAR REVIEWS:
+Acknowledge the issue honestly but with complete calm. The reviewer is fair — not angry, not vindictive.
+BANNED: "terrible service", "worst experience ever", "disgusting", "pathetic", "will never return", "complete waste of money"
+ALLOWED: "wait time was longer than expected", "service became less attentive once it got busy", "food was okay but not their best work", "has room to improve on consistency"
+One honest observation per review is sufficient. Do not pile on multiple negatives.
 
-UNIVERSAL RULE: Every review must make the restaurant look like a place worth visiting — even 3-star reviews. The goal is honest, constructive feedback that helps the business, not destroys it.
+UNIVERSAL RULE FOR ALL STAR RATINGS:
+Every review — even 3-star — must leave the reader feeling that this is a place worth considering. The goal is honest, constructive feedback that helps the business improve — not content that destroys its reputation.
 `;
 
 export async function POST(request) {
@@ -192,63 +210,64 @@ export async function POST(request) {
   const archetypes = pick(ARCHETYPE_POOLS);
   const hasCustomerNote = customerNote.length > 0;
 
-  // Food/product rules
   const foodRule = hasCustomerNote
-    ? `Customer shared their own note: "${customerNote}". Use ONLY what they mentioned for any food or product references. Ignore the business product list. Distribute specific details across the 3 reviews — never repeat the exact same detail in all 3.`
+    ? `Customer shared their own note: "${customerNote}". Use ONLY what they mentioned for any food or product references — ignore the business product list entirely. Distribute specific details across the 3 reviews — different detail in each review, never repeat the same detail across all 3.`
     : featuredProducts.length > 0
-      ? `Products you may reference: [${featuredProducts.join(", ")}]. Rules: (1) Use maximum 1 product name across all 3 reviews combined. (2) Only if it fits naturally in a sentence. (3) Never force it. (4) Never repeat it across reviews.`
+      ? `Products you may reference: [${featuredProducts.join(", ")}]. Rules: (1) Use maximum 1 product name across all 3 reviews combined. (2) Only if it fits naturally inside a sentence. (3) Never force it. (4) Never repeat it.`
       : `Do not mention any specific dish or product names. Speak naturally about the food or experience in general terms.`;
 
-  // SEO keyword rules
   const keywordRule = keywords.length > 0
-    ? `SEO keywords available: [${keywords.join(", ")}]. Use maximum 1 keyword across all 3 reviews. Only inside a natural flowing sentence — never as a label, title, or standalone phrase. Example of WRONG usage: "Best Restaurant Sambhajinagar". Example of RIGHT usage: "honestly one of the better spots I've found in Sambhajinagar". Skip entirely if it doesn't fit naturally.`
-    : `No SEO keywords. Use business name and city naturally where it fits.`;
+    ? `SEO keywords available: [${keywords.join(", ")}]. Rules: (1) Use maximum 1 keyword across all 3 reviews combined. (2) Only inside a natural flowing sentence — never as a label, title, or standalone phrase. (3) WRONG: "Best Restaurant Chhatrapati Sambhajinagar". RIGHT: "one of the better spots I have come across in Sambhajinagar". (4) Skip entirely if it does not fit naturally.`
+    : `No SEO keywords provided. Use business name and city naturally where it fits.`;
 
-  const systemPrompt = `You are a specialist in writing Google Maps reviews that sound exactly like real local customers — people who LIVE in the city, not tourists visiting it.
+  const systemPrompt = `You are a specialist in writing authentic Google Maps reviews that sound exactly like real LOCAL customers — people who live in the city, not tourists visiting it.
 
-THE SINGLE MOST IMPORTANT RULE: Every reviewer is a LOCAL RESIDENT of ${cityName}. They are not discovering this place. They are not on a trip. They have options in their city and they chose this place. Their writing should reflect that — confident, familiar, unbothered.
+THE MOST IMPORTANT RULE OF ALL:
+Every reviewer is a LOCAL RESIDENT of ${cityName}. They live here. They know this area. They are not on a trip. They are not discovering this place for the first time. They have options in their city and they chose this business. Their writing must reflect that — familiar, confident, and completely unbothered.
 
-What local writing sounds like:
-- "The biryani here is solid" — not "I discovered this amazing hidden gem"
-- "Been coming here for team lunches" — not "We decided to visit this establishment"  
-- "Good spot for a weekend dinner" — not "During our visit to this charming place"
-- "Service was quick, food was hot" — not "The staff exhibited exemplary hospitality"
+LOCAL vs TOURIST — understand the difference:
+LOCAL sounds like: "Solid place, been here a few times now" / "Good spot for a work lunch" / "Always end up coming back here"
+TOURIST sounds like: "Discovered this wonderful hidden gem" / "Had the pleasure of visiting" / "What a delightful find in this city"
 
-BANNED WORDS AND PHRASES — NEVER USE ANY OF THESE:
-hidden gem, gem, nestled, vibrant atmosphere, cozy ambiance, culinary, gastronomic, exquisite, impeccable, commendable, exceptional experience, delightful, testament to, truly amazing, wonderful experience, stumbled upon, discovered this place, found this place, had the pleasure, I recently visited, decided to visit, one must try, a must-visit (for 3-star)
+PERMANENTLY BANNED WORDS AND PHRASES — ZERO TOLERANCE:
+hidden gem, gem, nestled, vibrant atmosphere, cozy ambiance, culinary journey, gastronomic, exquisite, impeccable, commendable, exceptional, delightful, testament to, truly amazing, wonderful experience, stumbled upon, discovered this place, found this place, I had the pleasure, I recently visited, we decided to visit, we decided to check out, one must try, a must-visit (for 3-star only), highly recommend (for 3-star only), truly, exemplary, courteous staff (overly formal), above and beyond (for ordinary visits), top notch, would bring people here, would book again (use 'will come back' instead)
 
-BANNED STRUCTURAL PATTERNS:
-- Opening with "I recently visited [name]"
-- Opening with "We decided to check out"  
-- Opening with "Had the pleasure of visiting"
-- Using business name more than ONCE per review
-- Using city name more than ONCE per review
-- Using a keyword as a standalone title phrase
-- Mentioning InsightRep, QR codes, or any app
+BANNED STRUCTURAL PATTERNS — NEVER DO THESE:
+- Opening any review with "I recently visited [name]"
+- Opening any review with "We decided to visit / check out"
+- Opening any review with "I had the pleasure of visiting"
+- Using the business name more than ONCE in a single review
+- Using the city name more than ONCE in a single review
+- Mentioning InsightRep, QR codes, apps, or review prompts
+- Using SEO keywords as standalone title-case labels
+- Using emojis anywhere in any review
+- Indirect superlatives like "my friend said it is the best in town"
 
 ABSOLUTE NON-NEGOTIABLE RULES:
-1. Business name: "${exactBusinessName}" — copy-paste exactly, never shorten or alter even slightly
-2. Output ONLY valid JSON: { "reviews": ["r1", "r2", "r3"] }
-3. Each of the 3 reviews must start with a completely DIFFERENT first word
-4. Each review must feel written by a genuinely different type of LOCAL person — different vocabulary, sentence rhythm, detail level, emotional temperature
-5. ${calibration.forbidden}
+1. Business name: "${exactBusinessName}" — copy this exactly, never shorten or alter even one character
+2. Output ONLY valid JSON: { "reviews": ["review1", "review2", "review3"] }
+3. Each of the 3 reviews must start with a completely DIFFERENT first word — no shared openers
+4. Each review must feel written by a genuinely different type of local person — different vocabulary, sentence length, rhythm, detail level, emotional temperature
+5. Star calibration: ${calibration.forbidden}
 6. ${foodRule}
 7. ${keywordRule}
-8. Never use city abbreviations — full city name or skip entirely
-9. Never hallucinate any detail not provided to you
+8. Never abbreviate city names — full name or skip entirely
+9. Never hallucinate any detail not explicitly provided
+10. No emojis anywhere — not even in punctuation style
 
 ${NEGATIVE_HANDLING}`;
 
-  const userPrompt = `Write 3 Google Maps reviews for ${exactBusinessName} (${businessTypeLabel}, ${cityName}).
+  const userPrompt = `Write 3 Google Maps reviews for ${exactBusinessName} — a ${businessTypeLabel} in ${cityName}.
 
-RATING: ${stars}/5
+STAR RATING: ${stars} out of 5
 EMOTIONAL TONE: ${calibration.sentiment}
 TONE GUIDE: ${calibration.tone}
 CLOSING STYLE: ${calibration.closing}
-WHAT CUSTOMER HIGHLIGHTED: ${aspectLabel}
+WHAT THE CUSTOMER HIGHLIGHTED: ${aspectLabel}
 ${hasCustomerNote ? `CUSTOMER'S OWN WORDS: "${customerNote}"` : ""}
 
-CONTEXT FOR ALL 3 REVIEWS: The reviewer is a LOCAL resident of ${cityName}. They know the city well. They have many options. They chose ${exactBusinessName}. Write accordingly.
+CONTEXT FOR ALL 3 REVIEWS:
+The person writing each review is a LOCAL resident of ${cityName}. They are not a tourist. They know this city well. They have plenty of options nearby. They chose ${exactBusinessName} — and now they are writing about their experience. Every word must reflect that local familiarity.
 
 ---
 
@@ -269,16 +288,18 @@ How to open: ${archetypes[2].opener}
 
 ---
 
-SELF-CHECK before outputting — verify each review passes ALL of these:
-✓ Sounds unmistakably like a LOCAL — not a tourist, not a blogger
-✓ Matches the ${stars}-star emotional tone exactly — no tone mismatch
-✓ Completely different from the other two in vocabulary, structure, and personality
-✓ Would a real person actually type this on their phone
-✓ All banned words and patterns are absent
-✓ Business name used exactly once and spelled correctly: "${exactBusinessName}"
-✓ Negative aspects (if any) are handled constructively — not as complaints
+MANDATORY SELF-CHECK — Before outputting, verify every review passes ALL of these:
 
-If any check fails — rewrite that review before outputting.`;
+✓ LOCAL TEST: Does it sound like someone who LIVES in ${cityName} — not a tourist, not a blogger, not a food critic?
+✓ STAR TEST: Does it match the ${stars}-star emotional tone exactly — no tone mismatch at all?
+✓ DISTINCT TEST: Is each review completely different from the other two in vocabulary, structure, and personality?
+✓ HUMAN TEST: Would a real person actually type this exact text on their phone?
+✓ CLEAN TEST: Are ALL banned words, banned phrases, and banned structural patterns completely absent?
+✓ NAME TEST: Is the business name used exactly once per review and spelled exactly as "${exactBusinessName}"?
+✓ NEGATIVE TEST: If there was a negative aspect mentioned — is it handled constructively and calmly, NOT as a complaint?
+✓ EMOJI TEST: Are there ZERO emojis anywhere in any review?
+
+If ANY check fails — rewrite that review completely before outputting.`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -296,7 +317,9 @@ If any check fails — rewrite that review before outputting.`;
 
     const parsed = JSON.parse(raw);
     const reviews = Array.isArray(parsed.reviews)
-      ? parsed.reviews.map((r) => String(r).trim()).filter(Boolean)
+      ? parsed.reviews
+          .map(r => stripEmojis(String(r).trim()))
+          .filter(Boolean)
       : [];
 
     if (reviews.length < 3) return NextResponse.json({ ok: false, message: "Model returned fewer than 3 reviews." }, { status: 502 });
