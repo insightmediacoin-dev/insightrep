@@ -160,7 +160,7 @@ export default function SetupPage() {
   }
 
   async function onSubmit(e) {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!canProceed(0)) return;
     setError("");
     if (!ownerIdentifier) return router.replace("/login");
@@ -281,7 +281,7 @@ export default function SetupPage() {
               : "Optional details that make reviews more specific"}
           </p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-5">
+          <div className="mt-6 space-y-5">
 
             {/* ── STEP 1: BASICS ── */}
             {currentStep === 0 && (
@@ -505,7 +505,7 @@ export default function SetupPage() {
                   Next →
                 </button>
               ) : (
-                <button type="submit" disabled={loading}
+                <button type="button" disabled={loading} onClick={onSubmit}
                   className="flex h-12 flex-1 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white disabled:opacity-50 transition enabled:hover:brightness-110">
                   {loading ? "Saving…" : isEdit ? "Save changes" : "Save & go to dashboard"}
                 </button>
@@ -514,13 +514,17 @@ export default function SetupPage() {
 
             {currentStep < STEPS.length - 1 && (
               <button type="button"
-                onClick={() => currentStep === STEPS.length - 2 ? onSubmit({ preventDefault: () => {} }) : setCurrentStep(STEPS.length - 1)}
+                onClick={() => setCurrentStep(s => s + 1)}
+                className="w-full text-center text-xs text-text-muted hover:text-white transition py-1">
+                Skip this step →
+              </button>
+            )}
                 className="w-full text-center text-xs text-text-muted hover:text-white transition py-1">
                 {isEdit ? "Skip to save" : "Skip remaining steps →"}
               </button>
             )}
 
-          </form>
+          </div>
         </div>
 
         <p className="mt-4 text-center text-xs text-text-muted">
