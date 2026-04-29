@@ -4,11 +4,14 @@ import { createAdminClient } from "@/lib/supabase-admin";
 
 const FREE_MONTHLY_LIMIT = 10;
 
+// ─── RATE LIMIT CONFIG ────────────────────────────────────────────────────────
+const RATE_LIMIT_MAX      = 5;   // max generations per IP per window
+const RATE_LIMIT_WINDOW   = 60;  // window in minutes
+
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Strip emojis
 function stripEmojis(text) {
   return text
     .replace(/[\u{1F300}-\u{1FFFF}]/gu, '')
@@ -24,21 +27,44 @@ function stripEmojis(text) {
     .trim();
 }
 
-// ─── TIME SLOT DETECTION ──────────────────────────────────────────────────────
-// Returns: morning | afternoon | evening | night
 function getTimeSlot(hour) {
   if (hour >= 6  && hour < 11) return "morning";
   if (hour >= 11 && hour < 16) return "afternoon";
   if (hour >= 16 && hour < 20) return "evening";
-  return "night"; // 20:00 – 05:59
+  return "night";
 }
 
-// ─── TIME-AWARE ARCHETYPES ────────────────────────────────────────────────────
-// Each slot has 3 pools of 3 archetypes each.
-// The pool is randomly rotated within the slot — so variety remains.
+// ─── RATE LIMITER ─────────────────────────────────────────────────────────────
+// Uses Supabase rate_limits table — no extra packages needed
+// Table: rate_limits (ip TEXT, business_id TEXT, count INT, window_start TIMESTAMPTZ)
+async function checkRateLimit(admin, ip, businessId) {
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW * 60 * 1000).toISOString();
+  const key = `${ip}:${businessId}`;
+
+  try {
+    // Count generations from this IP for this business in the last window
+    const { count } = await admin
+      .from("rate_limits")
+      .select("*", { count: "exact", head: true })
+      .eq("key", key)
+      .gte("created_at", windowStart);
+
+    if ((count ?? 0) >= RATE_LIMIT_MAX) {
+      return { allowed: false, count: count ?? 0 };
+    }
+
+    // Log this generation attempt
+    await admin.from("rate_limits").insert({ key, created_at: new Date().toISOString() });
+
+    return { allowed: true, count: (count ?? 0) + 1 };
+  } catch {
+    // If rate_limits table doesn't exist yet — allow through
+    // Run SQL to create it: see comment below
+    return { allowed: true, count: 0 };
+  }
+}
 
 const TIME_ARCHETYPES = {
-
   morning: [
     [
       {
@@ -101,7 +127,6 @@ const TIME_ARCHETYPES = {
       },
     ],
   ],
-
   afternoon: [
     [
       {
@@ -164,7 +189,6 @@ const TIME_ARCHETYPES = {
       },
     ],
   ],
-
   evening: [
     [
       {
@@ -227,7 +251,6 @@ const TIME_ARCHETYPES = {
       },
     ],
   ],
-
   night: [
     [
       {
@@ -292,7 +315,6 @@ const TIME_ARCHETYPES = {
   ],
 };
 
-// ─── STAR CALIBRATION ─────────────────────────────────────────────────────────
 const STAR_CALIBRATION = {
   5: {
     sentiment: "absolutely loved the experience — everything was great",
@@ -314,7 +336,6 @@ const STAR_CALIBRATION = {
   },
 };
 
-// ─── NEGATIVE HANDLING ────────────────────────────────────────────────────────
 const NEGATIVE_HANDLING = `
 CRITICAL — HOW TO HANDLE NEGATIVE ASPECTS OR CUSTOMER NOTES:
 
@@ -335,9 +356,8 @@ NEVER: "terrible service", "worst experience", "disgusting", "will never return"
 ALLOWED: "wait time was a bit longer than expected", "service became less attentive once it got busy", "food was decent but not their best", "has room to improve on consistency"
 One honest observation per review is enough — do not pile on negatives.
 
-UNIVERSAL RULE: Every review — even 3-star — must leave the reader feeling this is a place worth considering. The goal is honest, constructive feedback — never destructive.
-
-GOLDEN RULE FOR ALL RATINGS: Never invent details the customer did not mention. If they said nothing negative — write nothing negative. Period.
+UNIVERSAL RULE: Every review — even 3-star — must leave the reader feeling this is a place worth considering.
+GOLDEN RULE: Never invent details the customer did not mention. If they said nothing negative — write nothing negative. Period.
 `;
 
 export async function POST(request) {
@@ -347,6 +367,11 @@ export async function POST(request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ ok: false, message: "Supabase admin client not configured." }, { status: 500 });
 
+  // ── Rate limiting ────────────────────────────────────────────────────────────
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || request.headers.get("x-real-ip")
+    || "unknown";
+
   let body;
   try { body = await request.json(); } catch {
     return NextResponse.json({ ok: false, message: "Invalid JSON." }, { status: 400 });
@@ -355,6 +380,16 @@ export async function POST(request) {
   const { businessId, rating, aspects, customNote, moodLabel } = body;
   if (!businessId || typeof businessId !== "string")
     return NextResponse.json({ ok: false, message: "businessId required." }, { status: 400 });
+
+  // Check rate limit — max 5 generations per IP per business per hour
+  const rateCheck = await checkRateLimit(admin, ip, businessId);
+  if (!rateCheck.allowed) {
+    return NextResponse.json({
+      ok: false,
+      message: "Too many requests. Please wait a while before generating more reviews.",
+      rateLimited: true,
+    }, { status: 429 });
+  }
 
   const stars = Number(rating);
   if (!Number.isInteger(stars) || stars < 3 || stars > 5)
@@ -405,7 +440,6 @@ export async function POST(request) {
     ? biz.keywords.split(",").map(k => k.trim()).filter(Boolean)
     : [];
 
-  // New context fields
   const businessDescription = biz.description?.trim() || "";
   const diningVibe   = biz.dining_vibe?.trim() || "";
   const priceRange   = biz.price_range?.trim() || "";
@@ -417,10 +451,10 @@ export async function POST(request) {
   try { specialFeatureLabels = JSON.parse(biz.special_features || "[]"); } catch {}
 
   const PRICE_RANGE_LABELS = {
-    budget: "budget-friendly — under Rs.200 per person",
-    mid:    "mid-range — Rs.200-500 per person",
-    premium:"premium — Rs.500-1000 per person",
-    luxury: "luxury — Rs.1000+ per person",
+    budget:  "budget-friendly — under Rs.200 per person",
+    mid:     "mid-range — Rs.200-500 per person",
+    premium: "premium — Rs.500-1000 per person",
+    luxury:  "luxury — Rs.1000+ per person",
   };
 
   const DINING_VIBE_LABELS = {
@@ -454,12 +488,11 @@ export async function POST(request) {
     pet_friendly:  "pet friendly",
   };
 
-  const priceLabel    = PRICE_RANGE_LABELS[priceRange]   || "";
-  const vibeLabel     = DINING_VIBE_LABELS[diningVibe]   || "";
+  const priceLabel    = PRICE_RANGE_LABELS[priceRange]  || "";
+  const vibeLabel     = DINING_VIBE_LABELS[diningVibe]  || "";
   const profileLabels = customerProfileLabels.map(p => CUSTOMER_PROFILE_MAP[p]).filter(Boolean);
   const featureLabels = specialFeatureLabels.map(f => SPECIAL_FEATURE_MAP[f]).filter(Boolean);
 
-  // Build rich business context string for the prompt
   const businessContext = [
     businessDescription ? `About the business: ${businessDescription}` : "",
     vibeLabel           ? `Dining style: ${vibeLabel}` : "",
@@ -471,35 +504,31 @@ export async function POST(request) {
   const cityName = biz.locality?.trim()
     || (biz.address ? biz.address.split(",").slice(-2).join(",").trim() : "India");
 
-  const aspectLabel = tags.length ? tags.join(", ") : "overall experience";
-  const calibration = STAR_CALIBRATION[stars];
+  const aspectLabel     = tags.length ? tags.join(", ") : "overall experience";
+  const calibration     = STAR_CALIBRATION[stars];
   const hasCustomerNote = customerNote.length > 0;
 
-  // ── Time-aware archetype selection ──────────────────────────────────────────
-  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  const hourIST = nowIST.getHours();
+  const nowIST   = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const hourIST  = nowIST.getHours();
   const isWeekend = nowIST.getDay() === 0 || nowIST.getDay() === 6;
   const timeSlot = getTimeSlot(hourIST);
   const archetypes = pick(TIME_ARCHETYPES[timeSlot]);
 
-  // ── Food rules ───────────────────────────────────────────────────────────────
   const foodRule = hasCustomerNote
     ? `Customer shared their own note: "${customerNote}". Use ONLY what they mentioned for food/product references — ignore the business product list. Distribute specific details across the 3 reviews — different detail in each, never repeat.`
     : featuredProducts.length > 0
       ? `Products you may reference: [${featuredProducts.join(", ")}]. Rules: (1) Use maximum 1 product name across all 3 reviews combined. (2) Only if it fits naturally. (3) Never force it. (4) Never repeat.`
       : `Do not mention any specific dish or product names. Speak naturally about the food or experience in general terms.`;
 
-  // ── SEO keyword rules ────────────────────────────────────────────────────────
   const keywordRule = keywords.length > 0
     ? `SEO keywords available: [${keywords.join(", ")}]. Use maximum 1 keyword across all 3 reviews. Only inside a natural flowing sentence — never as a label, title, or standalone phrase. WRONG: "Best Restaurant Sambhajinagar". RIGHT: "one of the better spots I've found in Sambhajinagar". Skip entirely if it does not fit naturally.`
     : `No SEO keywords provided. Use business name and city naturally where it fits.`;
 
-  // ── Time context label for prompt ────────────────────────────────────────────
   const timeContextLabel = {
-    morning: "morning (6am–11am) — could be breakfast, morning coffee, early outing",
+    morning:   "morning (6am–11am) — could be breakfast, morning coffee, early outing",
     afternoon: "afternoon (11am–4pm) — could be lunch, afternoon break, or midday visit",
-    evening: "evening (4pm–8pm) — could be early dinner, post-work visit, or evening outing",
-    night: "night (8pm–12am) — could be late dinner, night out, celebration, or friends catch-up",
+    evening:   "evening (4pm–8pm) — could be early dinner, post-work visit, or evening outing",
+    night:     "night (8pm–12am) — could be late dinner, night out, celebration, or friends catch-up",
   }[timeSlot];
 
   const weekdayContext = isWeekend
@@ -555,7 +584,6 @@ ${hasCustomerNote ? `CUSTOMER'S OWN WORDS: "${customerNote}"` : ""}
 
 TIME OF VISIT: ${timeContextLabel}
 DAY TYPE: ${isWeekend ? "Weekend" : "Weekday"}
-
 MOOD / VISIT PURPOSE: ${moodLabel ?? "general visit"}
 
 CONTEXT: The reviewer is a LOCAL resident of ${cityName}. Their review must feel natural for BOTH the time (${timeSlot}) AND the visit purpose (${moodLabel ?? "general visit"}). These two define the entire tone — a date night dinner review reads completely differently from a work lunch review.
@@ -574,13 +602,13 @@ How to open: ${archetypes[1].opener}
 
 REVIEW 3 — ${archetypes[2].name}
 Personality: ${archetypes[2].voice}
-Target length: ${archetypes[3] ? archetypes[2].length : archetypes[2].length}
+Target length: ${archetypes[2].length}
 How to open: ${archetypes[2].opener}
 
 ---
 
 SELF-CHECK before outputting — every review must pass ALL:
-✓ Does it sound natural for ${timeSlot} time AND ${moodLabel ?? "general visit"} purpose? Both must be reflected.
+✓ Does it sound natural for ${timeSlot} time AND ${moodLabel ?? "general visit"} purpose?
 ✓ Sounds like a LOCAL — not a tourist?
 ✓ Matches ${stars}-star tone exactly?
 ✓ Completely different from the other two in vocabulary and structure?
@@ -608,9 +636,7 @@ If ANY check fails — rewrite that review before outputting.`;
 
     const parsed = JSON.parse(raw);
     const reviews = Array.isArray(parsed.reviews)
-      ? parsed.reviews
-          .map(r => stripEmojis(String(r).trim()))
-          .filter(Boolean)
+      ? parsed.reviews.map(r => stripEmojis(String(r).trim())).filter(Boolean)
       : [];
 
     if (reviews.length < 3)
