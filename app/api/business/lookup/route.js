@@ -3,7 +3,8 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import { isValidOwnerIdentifier } from "@/lib/phone";
 
 const BUSINESS_COLUMNS =
- "id, created_at, owner_phone, name, address, gmb_link, keywords, products, plan, owner_name, owner_designation, owner_city, owner_whatsapp, business_type, business_category";
+  "id, created_at, owner_phone, name, address, locality, gmb_link, keywords, products, plan, owner_name, owner_designation, owner_city, owner_whatsapp, business_type, business_category, description, dining_vibe, price_range, customer_profiles, special_features";
+
 export async function GET(request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ ok: false, message: "Supabase admin client not configured." }, { status: 500 });
