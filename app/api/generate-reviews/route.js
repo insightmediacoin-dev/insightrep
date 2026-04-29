@@ -365,7 +365,7 @@ export async function POST(request) {
 
   const { data: biz, error } = await admin
     .from("businesses")
-    .select("name, address, gmb_link, keywords, products, plan, business_type, business_category")
+    .select("name, address, locality, gmb_link, keywords, products, plan, business_type, business_category, description, dining_vibe, price_range, customer_profiles, special_features")
     .eq("id", businessId)
     .maybeSingle();
 
@@ -405,9 +405,71 @@ export async function POST(request) {
     ? biz.keywords.split(",").map(k => k.trim()).filter(Boolean)
     : [];
 
-  const cityName = biz.address
-    ? biz.address.split(",").slice(-2).join(",").trim()
-    : "India";
+  // New context fields
+  const businessDescription = biz.description?.trim() || "";
+  const diningVibe   = biz.dining_vibe?.trim() || "";
+  const priceRange   = biz.price_range?.trim() || "";
+
+  let customerProfileLabels = [];
+  try { customerProfileLabels = JSON.parse(biz.customer_profiles || "[]"); } catch {}
+
+  let specialFeatureLabels = [];
+  try { specialFeatureLabels = JSON.parse(biz.special_features || "[]"); } catch {}
+
+  const PRICE_RANGE_LABELS = {
+    budget: "budget-friendly — under Rs.200 per person",
+    mid:    "mid-range — Rs.200-500 per person",
+    premium:"premium — Rs.500-1000 per person",
+    luxury: "luxury — Rs.1000+ per person",
+  };
+
+  const DINING_VIBE_LABELS = {
+    casual:       "casual / quick bites spot",
+    fine_dining:  "fine dining restaurant",
+    family:       "family-style restaurant",
+    takeaway:     "takeaway-focused",
+    cafe_hangout: "cafe and hangout spot",
+    bar_nightlife:"bar and nightlife venue",
+  };
+
+  const CUSTOMER_PROFILE_MAP = {
+    professionals: "working professionals",
+    families:      "families with kids",
+    students:      "college students",
+    couples:       "couples and date nights",
+    seniors:       "senior citizens",
+    mixed:         "mixed crowd",
+  };
+
+  const SPECIAL_FEATURE_MAP = {
+    rooftop:       "rooftop seating",
+    live_music:    "live music",
+    private_dining:"private dining available",
+    outdoor:       "outdoor seating",
+    parking:       "parking available",
+    delivery:      "home delivery",
+    pure_veg:      "pure vegetarian",
+    late_night:    "open late night",
+    wifi:          "free Wi-Fi",
+    pet_friendly:  "pet friendly",
+  };
+
+  const priceLabel    = PRICE_RANGE_LABELS[priceRange]   || "";
+  const vibeLabel     = DINING_VIBE_LABELS[diningVibe]   || "";
+  const profileLabels = customerProfileLabels.map(p => CUSTOMER_PROFILE_MAP[p]).filter(Boolean);
+  const featureLabels = specialFeatureLabels.map(f => SPECIAL_FEATURE_MAP[f]).filter(Boolean);
+
+  // Build rich business context string for the prompt
+  const businessContext = [
+    businessDescription ? `About the business: ${businessDescription}` : "",
+    vibeLabel           ? `Dining style: ${vibeLabel}` : "",
+    priceLabel          ? `Price range: ${priceLabel}` : "",
+    profileLabels.length ? `Typical customers: ${profileLabels.join(", ")}` : "",
+    featureLabels.length ? `Special features: ${featureLabels.join(", ")}` : "",
+  ].filter(Boolean).join("\n");
+
+  const cityName = biz.locality?.trim()
+    || (biz.address ? biz.address.split(",").slice(-2).join(",").trim() : "India");
 
   const aspectLabel = tags.length ? tags.join(", ") : "overall experience";
   const calibration = STAR_CALIBRATION[stars];
@@ -448,6 +510,9 @@ export async function POST(request) {
 
 THE MOST IMPORTANT RULE: Every reviewer is a LOCAL RESIDENT of ${cityName}. They live here. They know this city. They chose ${exactBusinessName}. Write accordingly — familiar, confident, unbothered.
 
+BUSINESS CONTEXT — USE THIS TO WRITE SPECIFIC REVIEWS:
+${businessContext || "No additional context provided."}
+
 TIME CONTEXT — CRITICAL:
 The customer is visiting at: ${timeContextLabel}
 ${weekdayContext}
@@ -485,6 +550,7 @@ EMOTIONAL TONE: ${calibration.sentiment}
 TONE GUIDE: ${calibration.tone}
 CLOSING STYLE: ${calibration.closing}
 WHAT THE CUSTOMER HIGHLIGHTED: ${aspectLabel}
+BUSINESS CONTEXT: ${businessContext || "Standard business — no extra context"}
 ${hasCustomerNote ? `CUSTOMER'S OWN WORDS: "${customerNote}"` : ""}
 
 TIME OF VISIT: ${timeContextLabel}
