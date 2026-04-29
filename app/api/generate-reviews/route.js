@@ -296,19 +296,19 @@ const TIME_ARCHETYPES = {
 const STAR_CALIBRATION = {
   5: {
     sentiment: "absolutely loved the experience — everything was great",
-    tone: "Pure positive. Strong enthusiasm. Genuine recommendation. Zero complaints or hedging.",
+    tone: "Pure positive. Strong enthusiasm. Genuine recommendation. Zero complaints or hedging of any kind.",
     closing: "Clear 'will be back' or strong recommendation. High conviction ending.",
-    forbidden: "ZERO negatives. ZERO 'but'. ZERO 'however'. ZERO hedging. Nothing that sounds remotely like a complaint or reservation.",
+    forbidden: "ZERO negatives. ZERO 'but'. ZERO 'however'. ZERO hedging. ZERO observations of any kind — positive only, no qualifiers whatsoever.",
   },
   4: {
-    sentiment: "really enjoyed it — great experience overall with one small logistical note allowed",
-    tone: "Strongly positive throughout. One very minor calm logistical observation is optional. Examples: 'gets busy on weekends so book in advance', 'parking nearby is limited'. NEVER mention food quality or service issues for 4-star.",
-    closing: "Confident positive recommendation. Clear verdict.",
-    forbidden: "ZERO food complaints. ZERO service complaints. ZERO 'disappointed'. Minor logistical notes only — and only if completely natural.",
+    sentiment: "really enjoyed it — great experience overall",
+    tone: "Strongly positive throughout. Same energy as 5-star but slightly less intense. Pure positive — NO observations, NO minor notes, NO 'but', NO 'however', NO 'parking', NO 'crowds', NO logistical tips UNLESS the customer explicitly mentioned something negative in their note. If customer said nothing negative — write pure positive only.",
+    closing: "Confident positive recommendation. Clear verdict. Strong ending.",
+    forbidden: "ZERO food complaints. ZERO service complaints. ZERO 'disappointed'. ZERO invented observations like parking, crowds, wait times, or noise — these must NEVER appear unless the customer mentioned them. If customer said nothing negative — treat this exactly like a 5-star review in positivity.",
   },
   3: {
     sentiment: "honest mixed experience — some things worked, some fell short",
-    tone: "Fair and balanced. Calm — not angry, not fake-positive. Like a trusted friend telling you the honest truth about a place. Acknowledges both what worked and what didn't.",
+    tone: "Fair and balanced. Calm — not angry, not fake-positive. Like a trusted friend telling you the honest truth about a place. Acknowledges both what worked and what did not.",
     closing: "'Worth trying once', 'has potential', 'decent for the price but has room to improve'. NEVER a strong positive close.",
     forbidden: "ZERO fake enthusiasm. ZERO 'amazing', 'best', 'must visit', 'highly recommend'. Tone must genuinely match 3 stars.",
   },
@@ -318,19 +318,26 @@ const STAR_CALIBRATION = {
 const NEGATIVE_HANDLING = `
 CRITICAL — HOW TO HANDLE NEGATIVE ASPECTS OR CUSTOMER NOTES:
 
-5-STAR: Completely ignore any negative mentioned. Focus entirely on positives.
+5-STAR: Completely ignore any negative mentioned by the customer. Focus entirely on positives. No exceptions.
 
-4-STAR: You may include ONE very minor calm logistical note in ONE review only.
-NEVER: "service was slow", "food was cold", "staff was rude", "waited too long"
-ALLOWED: "gets busy during peak hours", "parking can be tricky", "good idea to book on weekends"
-Must sound like a helpful tip — NOT a complaint. If it cannot be reframed, ignore it.
+4-STAR — MOST IMPORTANT RULE:
+If the customer mentioned NOTHING negative — write pure positive reviews. Do NOT invent any observations.
+NEVER invent: "parking can be tricky", "gets crowded", "wait time", "noise level", "service was slow" — these must NEVER appear unless the customer specifically mentioned them.
+Only if the customer explicitly mentioned something negative in their note: you may reframe it as ONE calm helpful tip in ONE review only.
+REFRAME EXAMPLES (only if customer mentioned it):
+- Customer said "waited long" → "good idea to book ahead on busy days"
+- Customer said "no parking" → "parking nearby can be limited — plan ahead"
+- Customer said "noisy" → "gets lively during peak hours — good if you like the energy"
+If the negative cannot be reframed naturally, ignore it entirely.
 
-3-STAR: Acknowledge honestly but with complete calm. Reviewer is fair — not angry.
-NEVER: "terrible service", "worst experience", "disgusting", "will never return"
-ALLOWED: "wait time was longer than expected", "service became less attentive once it got busy", "food was okay but not their best", "has room to improve on consistency"
-One honest observation per review is enough — do not pile on.
+3-STAR: Acknowledge the customer's specific issues honestly but with complete calm. Reviewer is fair — not angry.
+NEVER: "terrible service", "worst experience", "disgusting", "will never return", "pathetic"
+ALLOWED: "wait time was a bit longer than expected", "service became less attentive once it got busy", "food was decent but not their best", "has room to improve on consistency"
+One honest observation per review is enough — do not pile on negatives.
 
-UNIVERSAL RULE: Every review — even 3-star — must leave the reader feeling this is a place worth considering.
+UNIVERSAL RULE: Every review — even 3-star — must leave the reader feeling this is a place worth considering. The goal is honest, constructive feedback — never destructive.
+
+GOLDEN RULE FOR ALL RATINGS: Never invent details the customer did not mention. If they said nothing negative — write nothing negative. Period.
 `;
 
 export async function POST(request) {
