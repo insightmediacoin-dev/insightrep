@@ -112,6 +112,7 @@ export default function LoginPage() {
         return;
       }
       localStorage.setItem(OWNER_IDENTIFIER_STORAGE_KEY, identifier);
+    localStorage.removeItem(BUSINESS_ID_STORAGE_KEY);
       localStorage.setItem(OWNER_IDENTIFIER_TYPE_STORAGE_KEY, mode);
       localStorage.setItem(PHONE_STORAGE_KEY, identifier);
       if (data.hasProfile) {
