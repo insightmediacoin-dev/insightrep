@@ -9,7 +9,24 @@ export async function POST(request) {
     return NextResponse.json({ ok: false }, { status: 401 });
 
   const admin = createAdminClient();
-  await admin.from('businesses').update({ plan, plan_started_at: new Date().toISOString() }).eq('id', businessId);
+
+  const { error } = await admin
+    .from('businesses')
+    .update({ 
+      plan,
+      plan_started_at: new Date().toISOString()
+    })
+    .eq('id', businessId);
+
+  if (error) {
+    // Try without plan_started_at if column doesn't exist
+    const { error: error2 } = await admin
+      .from('businesses')
+      .update({ plan })
+      .eq('id', businessId);
+    
+    if (error2) return NextResponse.json({ ok: false, message: error2.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
