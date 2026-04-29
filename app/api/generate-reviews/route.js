@@ -352,7 +352,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, message: "Invalid JSON." }, { status: 400 });
   }
 
-  const { businessId, rating, aspects, customNote } = body;
+  const { businessId, rating, aspects, customNote, moodLabel } = body;
   if (!businessId || typeof businessId !== "string")
     return NextResponse.json({ ok: false, message: "businessId required." }, { status: 400 });
 
@@ -490,7 +490,9 @@ ${hasCustomerNote ? `CUSTOMER'S OWN WORDS: "${customerNote}"` : ""}
 TIME OF VISIT: ${timeContextLabel}
 DAY TYPE: ${isWeekend ? "Weekend" : "Weekday"}
 
-CONTEXT: The reviewer is a LOCAL resident of ${cityName} visiting at this specific time. Their review must feel natural for ${timeSlot} — not like a generic review that could have been written at any time.
+MOOD / VISIT PURPOSE: ${moodLabel ?? "general visit"}
+
+CONTEXT: The reviewer is a LOCAL resident of ${cityName}. Their review must feel natural for BOTH the time (${timeSlot}) AND the visit purpose (${moodLabel ?? "general visit"}). These two define the entire tone — a date night dinner review reads completely differently from a work lunch review.
 
 ---
 
@@ -512,7 +514,7 @@ How to open: ${archetypes[2].opener}
 ---
 
 SELF-CHECK before outputting — every review must pass ALL:
-✓ Does it sound natural for ${timeSlot} time? Not generic — time-specific.
+✓ Does it sound natural for ${timeSlot} time AND ${moodLabel ?? "general visit"} purpose? Both must be reflected.
 ✓ Sounds like a LOCAL — not a tourist?
 ✓ Matches ${stars}-star tone exactly?
 ✓ Completely different from the other two in vocabulary and structure?
