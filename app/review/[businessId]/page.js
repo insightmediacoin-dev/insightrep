@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ─── MOOD CONFIG ──────────────────────────────────────────────────────────────
 const MOODS = [
@@ -364,6 +364,10 @@ export default function CustomerReviewPage() {
   const [busy,         setBusy]         = useState(false);
   const [countdown,    setCountdown]    = useState(5);
 
+  // Pre-fetch state — stores result fetched in background when mood is picked
+  const prefetchRef    = useRef(null);   // stores { promise, moodKey }
+  const prefetchResult = useRef(null);   // stores resolved { reviews } or { error }
+
   // Load business
   useEffect(() => {
     if (!businessId) return;
@@ -398,6 +402,50 @@ export default function CustomerReviewPage() {
     return () => clearTimeout(t);
   }, [step, countdown, business]);
 
+  // Pre-fetch: start generation as soon as mood is selected
+  // By the time customer taps Generate, result is ready or nearly ready
+  useEffect(() => {
+    if (!mood || !rating || rating < 3 || !businessId) return;
+
+    const moodKey = mood + "_" + rating;
+
+    // Skip if already pre-fetching for this exact mood+rating combo
+    if (prefetchRef.current?.moodKey === moodKey) return;
+
+    // Reset previous result
+    prefetchResult.current = null;
+
+    const aspects   = MOOD_ASPECTS[mood] ?? ["overall experience"];
+    const moodLabel = MOOD_LABELS[mood]  ?? mood;
+
+    const controller = new AbortController();
+
+    const promise = fetch("/api/generate-reviews", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        businessId,
+        rating,
+        aspects,
+        customNote: "",   // no note yet — will re-fetch if note is added
+        moodLabel,
+      }),
+      signal: controller.signal,
+    })
+      .then(res => res.json())
+      .then(data => { prefetchResult.current = data; })
+      .catch(() => { prefetchResult.current = null; });
+
+    prefetchRef.current = { moodKey, controller, promise };
+
+    return () => {
+      // Cancel only if mood changed — not on unmount during generation
+      controller.abort();
+      prefetchRef.current  = null;
+      prefetchResult.current = null;
+    };
+  }, [mood, rating, businessId]);
+
   async function generate() {
     if (!rating || rating < 3 || !mood) return;
     setGenError("");
@@ -405,50 +453,77 @@ export default function CustomerReviewPage() {
     setBusy(true);
     setStep("generating");
 
-    const controller = new AbortController();
-    const timeout    = setTimeout(() => controller.abort(), 15000);
-
-    // Build aspects from mood
-    const aspects = MOOD_ASPECTS[mood] ?? ["overall experience"];
-    // Build the mood context string for the API
-    const moodLabel = MOOD_LABELS[mood] ?? mood;
+    const aspects   = MOOD_ASPECTS[mood] ?? ["overall experience"];
+    const moodLabel = MOOD_LABELS[mood]  ?? mood;
+    const hasNote   = customNote.trim().length > 0;
 
     try {
-      const res  = await fetch("/api/generate-reviews", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessId,
-          rating,
-          aspects,
-          customNote: customNote.trim(),
-          moodLabel,       // ← new field passed to API
-        }),
-        signal: controller.signal,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.limitReached) {
+      let data = null;
+
+      // Use pre-fetched result ONLY if:
+      // 1. Pre-fetch completed successfully
+      // 2. Customer did NOT add a custom note (note changes the output)
+      if (!hasNote && prefetchResult.current?.ok && Array.isArray(prefetchResult.current?.reviews)) {
+        // Already done — instant result
+        data = prefetchResult.current;
+        prefetchResult.current = null;
+      } else {
+        // Either note was added, pre-fetch failed, or still in progress — make fresh call
+        // If pre-fetch is still running, wait for it first (then check again)
+        if (!hasNote && prefetchRef.current?.promise) {
+          await prefetchRef.current.promise;
+          if (prefetchResult.current?.ok && Array.isArray(prefetchResult.current?.reviews)) {
+            data = prefetchResult.current;
+            prefetchResult.current = null;
+          }
+        }
+
+        // Still no data — make a fresh API call
+        if (!data) {
+          const controller = new AbortController();
+          const timeout    = setTimeout(() => controller.abort(), 15000);
+          try {
+            const res = await fetch("/api/generate-reviews", {
+              method:  "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                businessId,
+                rating,
+                aspects,
+                customNote: customNote.trim(),
+                moodLabel,
+              }),
+              signal: controller.signal,
+            });
+            data = await res.json();
+          } finally {
+            clearTimeout(timeout);
+          }
+        }
+      }
+
+      if (!data?.ok) {
+        if (data?.limitReached) {
           setLimitReached(true);
           setGenError("This business has reached its free plan limit for this month.");
         } else {
-          setGenError(data.message ?? "Generation failed.");
+          setGenError(data?.message ?? "Generation failed.");
         }
         setStep("mood");
         return;
       }
+
       setReviews(data.reviews);
       setSelected(0);
       setStep("pick");
     } catch (err) {
-      if (err.name === "AbortError") {
+      if (err?.name === "AbortError") {
         setGenError("Taking longer than usual — please try again.");
       } else {
         setGenError("Something went wrong. Please try again.");
       }
       setStep("mood");
     } finally {
-      clearTimeout(timeout);
       setBusy(false);
     }
   }
