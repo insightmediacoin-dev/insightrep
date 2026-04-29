@@ -369,7 +369,9 @@ export default function DashboardPage() {
   const loadBusiness = useCallback(async () => {
     const identifier = localStorage.getItem(OWNER_IDENTIFIER_STORAGE_KEY);
     if (!identifier) return router.replace("/login");
-    let id = localStorage.getItem(BUSINESS_ID_STORAGE_KEY);
+    // Always clear cached ID to ensure fresh data — reflects plan changes from admin
+localStorage.removeItem(BUSINESS_ID_STORAGE_KEY);
+let id = null;
     try {
       if (!id) {
         const lr = await fetch(`/api/business/lookup?identifier=${encodeURIComponent(identifier)}`);
