@@ -519,10 +519,7 @@ export default function SetupPage() {
                 Skip this step →
               </button>
             )}
-                className="w-full text-center text-xs text-text-muted hover:text-white transition py-1">
-                {isEdit ? "Skip to save" : "Skip remaining steps →"}
-              </button>
-            )}
+
 
           </div>
         </div>
