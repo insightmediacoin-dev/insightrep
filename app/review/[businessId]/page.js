@@ -380,6 +380,19 @@ export default function CustomerReviewPage() {
         if (cancelled) return;
         if (!res.ok) { setLoadError(data.message ?? "Business not found."); setStep("error"); return; }
         setBusiness(data.business);
+
+        // ── Duplicate prevention ──────────────────────────────────────────────
+        // Check if this device already reviewed this business in last 30 days
+        const storageKey = `ir_reviewed_${data.business.id}`;
+        const lastReview = localStorage.getItem(storageKey);
+        if (lastReview) {
+          const daysSince = (Date.now() - parseInt(lastReview)) / (1000 * 60 * 60 * 24);
+          if (daysSince < 30) {
+            setStep("already_reviewed");
+            setLoading && setLoading(false);
+            return;
+          }
+        }
         setStep("rating");
         fetch("/api/business/scan", {
           method: "POST",
@@ -544,6 +557,12 @@ export default function CustomerReviewPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ businessId, rating }),
     }).catch(() => {});
+
+    // Mark this device as having reviewed — prevent duplicates for 30 days
+    try {
+      localStorage.setItem(`ir_reviewed_${businessId}`, Date.now().toString());
+    } catch {}
+
     setCountdown(5);
     setStep("success");
     setBusy(false);
@@ -560,6 +579,36 @@ export default function CustomerReviewPage() {
     <div className="min-h-[100dvh] bg-navy px-4 py-16 text-center">
       <p className="text-accent">{loadError}</p>
       <Link href="/" className="mt-6 inline-block text-sm text-white underline">Home</Link>
+    </div>
+  );
+
+  if (step === "already_reviewed") return (
+    <div className="min-h-[100dvh] bg-navy px-4 py-16 flex flex-col items-center justify-center text-center gap-6">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20 text-5xl">
+        ✅
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-2xl font-bold text-white">Thank you!</h2>
+        <p className="text-sm text-text-muted max-w-xs mx-auto">
+          You already left a review for this place recently. We appreciate your support!
+        </p>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-5 max-w-xs w-full space-y-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-text-muted">Want to leave another?</p>
+        <p className="text-xs text-text-muted leading-relaxed">
+          To keep Google reviews authentic, we limit one review per device every 30 days.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            try { localStorage.removeItem(`ir_reviewed_${business?.id}`); } catch {}
+            setStep("rating");
+          }}
+          className="mt-2 text-xs text-accent hover:underline"
+        >
+          I want to leave another review anyway
+        </button>
+      </div>
     </div>
   );
 
