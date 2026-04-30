@@ -4,34 +4,140 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// ─── MOOD CONFIG ──────────────────────────────────────────────────────────────
-const MOODS = [
-  { id: "relaxed",     label: "Relaxed",      icon: "😊", desc: "Chill visit, no rush" },
-  { id: "celebration", label: "Celebrating",  icon: "🎉", desc: "Birthday, anniversary, special occasion" },
-  { id: "work",        label: "Work visit",   icon: "💼", desc: "Team lunch, client meeting, work break" },
-  { id: "family",      label: "Family time",  icon: "👨‍👩‍👧", desc: "With family or kids" },
-  { id: "date",        label: "Date night",   icon: "💑", desc: "Romantic evening out" },
-  { id: "friends",     label: "Friends hangout", icon: "👯", desc: "Catching up with friends" },
-];
+// ─── MOOD CONFIG BY BUSINESS TYPE ────────────────────────────────────────────
+const MOODS_BY_TYPE = {
+  restaurant: [
+    { id: "relaxed",     label: "Relaxed",         icon: "😊", desc: "Chill visit, no rush" },
+    { id: "celebration", label: "Celebrating",      icon: "🎉", desc: "Birthday, anniversary, special occasion" },
+    { id: "family",      label: "Family time",      icon: "👨‍👩‍👧", desc: "With family or kids" },
+    { id: "date",        label: "Date night",       icon: "💑", desc: "Romantic evening out" },
+    { id: "friends",     label: "Friends hangout",  icon: "👯", desc: "Catching up with friends" },
+    { id: "work",        label: "Work visit",       icon: "💼", desc: "Team lunch, client meeting" },
+  ],
+  cafe: [
+    { id: "relaxed",     label: "Chill session",    icon: "😊", desc: "Coffee, reading, unwinding" },
+    { id: "work",        label: "Work / Study",     icon: "💻", desc: "Work session or studying" },
+    { id: "friends",     label: "Friends catchup",  icon: "👯", desc: "Catching up over coffee" },
+    { id: "date",        label: "Cafe date",        icon: "💑", desc: "Romantic coffee outing" },
+    { id: "family",      label: "Family outing",    icon: "👨‍👩‍👧", desc: "With family or kids" },
+    { id: "celebration", label: "Celebrating",      icon: "🎉", desc: "Birthday or special occasion" },
+  ],
+  hotel: [
+    { id: "relaxed",     label: "Leisure stay",     icon: "🌴", desc: "Vacation or weekend getaway" },
+    { id: "work",        label: "Business trip",    icon: "💼", desc: "Work travel or conference" },
+    { id: "celebration", label: "Special occasion", icon: "🎉", desc: "Anniversary, birthday stay" },
+    { id: "family",      label: "Family trip",      icon: "👨‍👩‍👧", desc: "Family vacation or outing" },
+    { id: "date",        label: "Romantic getaway", icon: "💑", desc: "Couple retreat" },
+    { id: "friends",     label: "Group trip",       icon: "👯", desc: "Trip with friends" },
+  ],
+  bar: [
+    { id: "friends",     label: "Night out",        icon: "🎊", desc: "Evening out with friends" },
+    { id: "celebration", label: "Celebrating",      icon: "🎉", desc: "Birthday, promotion, occasion" },
+    { id: "relaxed",     label: "After work",       icon: "😊", desc: "Unwinding after a long day" },
+    { id: "date",        label: "Date night",       icon: "💑", desc: "Romantic evening out" },
+    { id: "work",        label: "Work drinks",      icon: "💼", desc: "Team outing or client drinks" },
+  ],
+  bakery: [
+    { id: "relaxed",     label: "Quick visit",      icon: "😊", desc: "Picking up something delicious" },
+    { id: "celebration", label: "Special order",    icon: "🎂", desc: "Birthday cake or celebration" },
+    { id: "family",      label: "Family treat",     icon: "👨‍👩‍👧", desc: "Treating the family" },
+    { id: "friends",     label: "With friends",     icon: "👯", desc: "Coffee and snacks together" },
+    { id: "work",        label: "Office order",     icon: "💼", desc: "Ordered for office or team" },
+  ],
+  fastfood: [
+    { id: "relaxed",     label: "Quick bite",       icon: "⚡", desc: "Fast and satisfying" },
+    { id: "friends",     label: "With friends",     icon: "👯", desc: "Casual hangout" },
+    { id: "family",      label: "Family meal",      icon: "👨‍👩‍👧", desc: "With family or kids" },
+    { id: "work",        label: "Lunch break",      icon: "💼", desc: "Quick work break" },
+    { id: "celebration", label: "Treat",            icon: "🎉", desc: "Treating yourself or others" },
+  ],
+  dhaba: [
+    { id: "relaxed",     label: "Regular visit",    icon: "😊", desc: "My usual spot" },
+    { id: "friends",     label: "With friends",     icon: "👯", desc: "Group meal" },
+    { id: "family",      label: "Family meal",      icon: "👨‍👩‍👧", desc: "With family" },
+    { id: "work",        label: "Work lunch",       icon: "💼", desc: "Quick work break" },
+    { id: "travel",      label: "Passing through",  icon: "🚗", desc: "Stopped on a road trip" },
+  ],
+  salon: [
+    { id: "relaxed",     label: "Regular visit",    icon: "✂️", desc: "My usual appointment" },
+    { id: "celebration", label: "Special occasion", icon: "🎉", desc: "Wedding, event, party prep" },
+    { id: "work",        label: "Work / Meeting",   icon: "💼", desc: "Professional grooming" },
+    { id: "date",        label: "Date prep",        icon: "💑", desc: "Getting ready for a date" },
+    { id: "friends",     label: "With a friend",    icon: "👯", desc: "Came with a friend" },
+  ],
+  gym: [
+    { id: "relaxed",     label: "Regular session",  icon: "💪", desc: "My usual workout" },
+    { id: "work",        label: "First visit",      icon: "🆕", desc: "Trying it out" },
+    { id: "friends",     label: "With a friend",    icon: "👯", desc: "Workout buddy" },
+    { id: "celebration", label: "Milestone",        icon: "🏆", desc: "Hit a fitness goal" },
+  ],
+  retail: [
+    { id: "relaxed",     label: "Shopping visit",   icon: "🛍️", desc: "Regular shopping" },
+    { id: "celebration", label: "Special purchase", icon: "🎁", desc: "Gift or occasion shopping" },
+    { id: "family",      label: "Family shopping",  icon: "👨‍👩‍👧", desc: "Shopping with family" },
+    { id: "friends",     label: "With friends",     icon: "👯", desc: "Shopping with friends" },
+    { id: "work",        label: "Work purchase",    icon: "💼", desc: "Office or business shopping" },
+  ],
+  clinic: [
+    { id: "relaxed",     label: "Regular checkup",  icon: "🏥", desc: "Routine appointment" },
+    { id: "work",        label: "Consultation",     icon: "👨‍⚕️", desc: "Specific medical consultation" },
+    { id: "family",      label: "Family visit",     icon: "👨‍👩‍👧", desc: "Brought family member" },
+    { id: "friends",     label: "Referred visit",   icon: "🤝", desc: "Came on recommendation" },
+  ],
+  agency: [
+    { id: "work",        label: "Client meeting",   icon: "💼", desc: "Business meeting or consultation" },
+    { id: "relaxed",     label: "Regular client",   icon: "🤝", desc: "Ongoing service" },
+    { id: "celebration", label: "Project complete", icon: "🎉", desc: "Celebrating project success" },
+    { id: "friends",     label: "Referred by",      icon: "👥", desc: "Came on recommendation" },
+  ],
+  education: [
+    { id: "work",        label: "Regular class",    icon: "📚", desc: "My usual classes" },
+    { id: "relaxed",     label: "Trial visit",      icon: "🆕", desc: "First time exploring" },
+    { id: "family",      label: "For my child",     icon: "👨‍👩‍👧", desc: "Enrolled family member" },
+    { id: "friends",     label: "With friends",     icon: "👯", desc: "Joined with friends" },
+    { id: "celebration", label: "Achievement",      icon: "🏆", desc: "Celebrated a result" },
+  ],
+  travel: [
+    { id: "relaxed",     label: "Leisure trip",     icon: "🌴", desc: "Vacation or sightseeing" },
+    { id: "celebration", label: "Special trip",     icon: "🎉", desc: "Anniversary, honeymoon, occasion" },
+    { id: "family",      label: "Family trip",      icon: "👨‍👩‍👧", desc: "Travelling with family" },
+    { id: "friends",     label: "Group trip",       icon: "👯", desc: "Trip with friends" },
+    { id: "work",        label: "Business trip",    icon: "💼", desc: "Work-related travel" },
+  ],
+  other: [
+    { id: "relaxed",     label: "Regular visit",    icon: "😊", desc: "My usual visit" },
+    { id: "celebration", label: "Special occasion", icon: "🎉", desc: "Birthday or celebration" },
+    { id: "family",      label: "Family visit",     icon: "👨‍👩‍👧", desc: "With family" },
+    { id: "friends",     label: "With friends",     icon: "👯", desc: "Came with friends" },
+    { id: "work",        label: "Work related",     icon: "💼", desc: "Business or professional visit" },
+  ],
+};
+
+// Helper: get moods for a business type
+function getMoodsForType(businessType) {
+  return MOODS_BY_TYPE[businessType] ?? MOODS_BY_TYPE.other;
+}
 
 // Mood → aspects mapping (sent to AI as context)
 const MOOD_ASPECTS = {
-  relaxed:     ["Ambiance", "Food", "Service"],
+  relaxed:     ["Ambiance", "Service", "Overall experience"],
   celebration: ["Ambiance", "Food", "Service", "Overall experience"],
-  work:        ["Service", "Food", "Value for money", "Speed"],
-  family:      ["Food", "Service", "Value for money", "Portions"],
-  date:        ["Ambiance", "Food", "Service"],
-  friends:     ["Food", "Ambiance", "Service", "Vibe"],
+  work:        ["Service", "Value for money", "Speed", "Professionalism"],
+  family:      ["Service", "Value for money", "Comfort", "Friendliness"],
+  date:        ["Ambiance", "Service", "Overall experience"],
+  friends:     ["Ambiance", "Service", "Vibe", "Overall experience"],
+  travel:      ["Service", "Value for money", "Experience"],
 };
 
 // Mood → label sent to AI
 const MOOD_LABELS = {
-  relaxed:     "relaxed solo or casual visit — no special occasion",
+  relaxed:     "relaxed casual visit — no special occasion",
   celebration: "celebration visit — birthday, anniversary, or special occasion",
-  work:        "work-related visit — team lunch, client meeting, or work break",
+  work:        "work-related visit — professional or business purpose",
   family:      "family visit — came with family members or kids",
-  date:        "date night — romantic evening out with partner",
+  date:        "date or romantic outing — with partner",
   friends:     "friends hangout — casual outing or catch-up with friends",
+  travel:      "travel visit — passing through or road trip stop",
 };
 
 // ─── BUSINESS LOADING SKELETON ────────────────────────────────────────────────
@@ -265,7 +371,7 @@ function RatingStep({ rating, hoverRating, setRating, setHoverRating, onContinue
 }
 
 // ─── MOOD STEP ────────────────────────────────────────────────────────────────
-function MoodStep({ mood, setMood, onContinue, onBack, busy, limitReached, genError, customNote, setCustomNote }) {
+function MoodStep({ mood, setMood, onContinue, onBack, busy, limitReached, genError, customNote, setCustomNote, availableMoods }) {
   return (
     <section className="mt-10 space-y-6">
       <button type="button" onClick={onBack} className="text-sm text-text-muted hover:text-white">← Back</button>
@@ -276,7 +382,7 @@ function MoodStep({ mood, setMood, onContinue, onBack, busy, limitReached, genEr
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {MOODS.map((m) => {
+        {availableMoods.map((m) => {
           const selected = mood === m.id;
           return (
             <button
@@ -640,6 +746,7 @@ export default function CustomerReviewPage() {
             genError={genError}
             customNote={customNote}
             setCustomNote={setCustomNote}
+            availableMoods={getMoodsForType(business?.business_type)}
           />
         )}
 
