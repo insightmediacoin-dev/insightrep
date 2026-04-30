@@ -7,34 +7,44 @@ export async function POST(request) {
     const normalizedEmail = String(email ?? '').trim().toLowerCase();
     const admin = createAdminClient();
 
+    // Step 1: Find valid OTP record
     const { data: record } = await admin
       .from('otp_store')
       .select('*')
       .eq('identifier', normalizedEmail)
       .eq('otp', otp)
       .gt('expires_at', new Date().toISOString())
-      .maybeSingle();  // ← fix
+      .maybeSingle();
 
+    // Step 2: If not found — return error WITHOUT deleting
     if (!record) {
-      return NextResponse.json({ ok: false, message: 'Invalid or expired OTP' }, { status: 401 });
+      return NextResponse.json(
+        { ok: false, message: 'Invalid or expired OTP' },
+        { status: 401 }
+      );
     }
 
+    // Step 3: OTP is valid — NOW delete it
     await admin.from('otp_store').delete().eq('identifier', normalizedEmail);
 
+    // Step 4: Check if business exists
     const { data: existing } = await admin
       .from('businesses')
       .select('id')
       .eq('owner_phone', normalizedEmail)
-      .maybeSingle();  // ← fix
+      .maybeSingle();
 
     return NextResponse.json({
-      ok: true,
-      email: normalizedEmail,
+      ok:         true,
+      email:      normalizedEmail,
       hasProfile: !!existing,
       businessId: existing?.id || null,
     });
 
   } catch (err) {
-    return NextResponse.json({ ok: false, message: err.message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, message: err.message },
+      { status: 500 }
+    );
   }
 }
