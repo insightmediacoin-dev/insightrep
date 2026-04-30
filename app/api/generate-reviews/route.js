@@ -360,6 +360,121 @@ UNIVERSAL RULE: Every review — even 3-star — must leave the reader feeling t
 GOLDEN RULE: Never invent details the customer did not mention. If they said nothing negative — write nothing negative. Period.
 `;
 
+
+// ─── BUSINESS TYPE CONTEXT ────────────────────────────────────────────────────
+// Overrides food-specific language in prompts for non-food businesses
+const BUSINESS_TYPE_CONTEXT = {
+  restaurant: {
+    experience: "dining experience",
+    visited:    "came here to eat",
+    product:    "food and drinks",
+    place:      "restaurant",
+    banned:     [],
+  },
+  cafe: {
+    experience: "cafe experience",
+    visited:    "came here for coffee or a bite",
+    product:    "coffee, drinks and snacks",
+    place:      "cafe",
+    banned:     [],
+  },
+  hotel: {
+    experience: "stay experience",
+    visited:    "stayed here",
+    product:    "rooms, facilities and service",
+    place:      "hotel",
+    banned:     ["dinner spot", "meal", "food was", "dishes", "biryani", "menu"],
+  },
+  bar: {
+    experience: "bar experience",
+    visited:    "came here for drinks and a good time",
+    product:    "drinks, cocktails and vibe",
+    place:      "bar",
+    banned:     [],
+  },
+  bakery: {
+    experience: "bakery experience",
+    visited:    "came here for baked goods",
+    product:    "baked goods and pastries",
+    place:      "bakery",
+    banned:     [],
+  },
+  fastfood: {
+    experience: "quick service experience",
+    visited:    "came here for a quick meal",
+    product:    "food and quick bites",
+    place:      "quick service restaurant",
+    banned:     [],
+  },
+  dhaba: {
+    experience: "dhaba experience",
+    visited:    "stopped here for a meal",
+    product:    "food and chai",
+    place:      "dhaba",
+    banned:     [],
+  },
+  salon: {
+    experience: "salon experience",
+    visited:    "came here for a haircut or treatment",
+    product:    "hair and beauty services",
+    place:      "salon",
+    banned:     ["dinner spot", "meal", "food was", "dishes", "menu", "restaurant", "biryani", "evening meal", "quiet meal"],
+  },
+  gym: {
+    experience: "gym and fitness experience",
+    visited:    "came here for a workout",
+    product:    "fitness equipment, trainers and classes",
+    place:      "gym",
+    banned:     ["dinner spot", "meal", "food was", "dishes", "menu", "restaurant", "biryani", "evening meal", "quiet meal", "dining"],
+  },
+  retail: {
+    experience: "shopping experience",
+    visited:    "came here to shop",
+    product:    "products and merchandise",
+    place:      "store",
+    banned:     ["dinner spot", "meal", "food was", "dishes", "menu", "biryani", "evening meal"],
+  },
+  clinic: {
+    experience: "clinic experience",
+    visited:    "visited for a consultation or checkup",
+    product:    "medical services and consultation",
+    place:      "clinic",
+    banned:     ["dinner spot", "meal", "food was", "dishes", "menu", "restaurant", "biryani", "evening meal", "quiet meal", "dining"],
+  },
+  agency: {
+    experience: "service experience",
+    visited:    "engaged their services",
+    product:    "professional services and deliverables",
+    place:      "agency",
+    banned:     ["dinner spot", "meal", "food was", "dishes", "menu", "restaurant", "biryani", "evening meal", "quiet meal", "dining", "ambiance", "seating"],
+  },
+  education: {
+    experience: "learning experience",
+    visited:    "enrolled here for classes",
+    product:    "teaching, faculty and study environment",
+    place:      "institute",
+    banned:     ["dinner spot", "meal", "food was", "dishes", "menu", "restaurant", "biryani", "evening meal", "quiet meal", "dining"],
+  },
+  travel: {
+    experience: "travel and tour experience",
+    visited:    "booked a tour or package here",
+    product:    "tour packages and travel services",
+    place:      "travel agency",
+    banned:     ["dinner spot", "meal", "food was", "dishes", "menu", "biryani", "evening meal"],
+  },
+  other: {
+    experience: "overall experience",
+    visited:    "came here",
+    product:    "products and services",
+    place:      "business",
+    banned:     [],
+  },
+};
+
+function getBusinessTypeContext(type) {
+  return BUSINESS_TYPE_CONTEXT[type] ?? BUSINESS_TYPE_CONTEXT.other;
+}
+
 export async function POST(request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return NextResponse.json({ ok: false, message: "OPENAI_API_KEY is not set." }, { status: 503 });
@@ -431,6 +546,7 @@ export async function POST(request) {
   const businessTypeLabel = biz.business_type === "other"
     ? (biz.business_category || "business")
     : biz.business_type || "restaurant";
+  const typeCtx = getBusinessTypeContext(biz.business_type);
 
   const featuredProducts = biz.products
     ? biz.products.split(",").map(p => p.trim()).filter(Boolean)
@@ -535,9 +651,53 @@ export async function POST(request) {
     ? "It is a WEEKEND — family outings, leisure visits, group catch-ups, and celebrations are all natural."
     : "It is a WEEKDAY — work lunches, post-work dinners, and quick visits are natural. Avoid heavy celebration tones.";
 
+  // ─── FEW-SHOT EXAMPLES FOR PROMPT ──────────────────────────────────────────
+  const FEW_SHOT_EXAMPLES = `
+EXAMPLES OF PERFECT REVIEWS — write with this level of authenticity and naturalness:
+
+EXAMPLE 1 — Family dinner, 5-star, evening:
+"Me and my parents came here for dinner and it was a great evening. The veg manchurian and schezwan noodles were both super flavorful — exactly what I was craving. What surprised me was the pani puri shots — really innovative, never had that before. Staff handled my dietary requirement without any fuss. Would come back for sure."
+
+EXAMPLE 2 — Work lunch, 4-star, afternoon:
+"Been coming here for work lunches for a while now. Food is consistently good and the service is quick enough that I can be back at the office on time. The paneer dishes are always reliable."
+
+EXAMPLE 3 — Couple outing, 5-star, evening:
+"Came here with my partner for a quiet evening dinner and the atmosphere was spot on — breezy, not too noisy, good lighting. The pasta was well made and the kebabs were properly flavored. One of those places you keep coming back to without really thinking about it."
+
+EXAMPLE 4 — Friends group, 5-star, night:
+"Came here with a group of friends after a movie and everyone left happy — which is hard to pull off with a big group. The biryani was the highlight, nicely presented and full of flavor."
+
+EXAMPLE 5 — Solo lunch, 3-star, afternoon:
+"The food was decent but the wait was longer than expected for a Tuesday afternoon. The thali was good value once it arrived. Has potential — would give it another shot on a quieter day."
+
+PATTERNS THAT MAKE REVIEWS AUTHENTIC:
+- Personal context stated naturally: "me and my parents", "came with my partner", "brought the team"
+- Specific dish + specific honest adjective: "super flavorful", "properly flavored", "good value"
+- Unexpected memorable detail: something specific that stands out, not generic praise
+- Honest closes: "would come back", "give it another shot", "one of those places you keep returning to"
+- Varied sentence length — short punchy observations mixed with slightly longer descriptions
+- Sounds like someone who LIVES there, not a tourist discovering it
+
+AVOID THESE PATTERNS:
+- "I recently visited this hidden gem" — tourist opener
+- "exceptional culinary experience" — corporate language  
+- "highly recommended!" — generic filler
+- "Fantastic place near me in [city]" — SEO spam
+`;
+
   const systemPrompt = `You are a specialist in writing authentic Google Maps reviews that sound exactly like real LOCAL customers — people who LIVE in the city, not tourists.
 
 THE MOST IMPORTANT RULE: Every reviewer is a LOCAL RESIDENT of ${cityName}. They live here. They know this city. They chose ${exactBusinessName}. Write accordingly — familiar, confident, unbothered.
+
+BUSINESS TYPE: This is a ${businessTypeLabel}. NOT a restaurant (unless it is one).
+Every review must match the nature of this business:
+- The reviewer ${typeCtx.visited}
+- They are reviewing: ${typeCtx.product}
+- This is a ${typeCtx.place}
+${typeCtx.banned.length > 0 ? `
+PERMANENTLY BANNED FOR THIS BUSINESS TYPE (never use these for a ${businessTypeLabel}):
+${typeCtx.banned.map(b => '"' + b + '"').join(', ')}
+These phrases are for restaurants only — NEVER use them for a ${businessTypeLabel}.` : ''}
 
 BUSINESS CONTEXT — USE THIS TO WRITE SPECIFIC REVIEWS:
 ${businessContext || "No additional context provided."}
@@ -546,6 +706,8 @@ TIME CONTEXT — CRITICAL:
 The customer is visiting at: ${timeContextLabel}
 ${weekdayContext}
 Every review MUST feel natural for this time of day and day type. A morning review sounds completely different from a night review. A weekday lunch review is different from a weekend dinner review. Match the time perfectly.
+
+${FEW_SHOT_EXAMPLES}
 
 PERMANENTLY BANNED WORDS AND PHRASES:
 hidden gem, gem, nestled, vibrant atmosphere, cozy ambiance, culinary journey, gastronomic, exquisite, impeccable, commendable, exceptional, delightful, testament to, truly amazing, wonderful experience, stumbled upon, discovered this place, I recently visited, we decided to visit, I had the pleasure, one must try, highly recommend (3-star), truly, exemplary, above and beyond, top notch, would bring people here, would book again
@@ -586,7 +748,11 @@ TIME OF VISIT: ${timeContextLabel}
 DAY TYPE: ${isWeekend ? "Weekend" : "Weekday"}
 MOOD / VISIT PURPOSE: ${moodLabel ?? "general visit"}
 
-CONTEXT: The reviewer is a LOCAL resident of ${cityName}. Their review must feel natural for BOTH the time (${timeSlot}) AND the visit purpose (${moodLabel ?? "general visit"}). These two define the entire tone — a date night dinner review reads completely differently from a work lunch review.
+CONTEXT: The reviewer is a LOCAL resident of ${cityName}. Their review must feel natural for BOTH the time (${timeSlot}) AND the visit purpose (${moodLabel ?? "general visit"}). These two define the entire tone.
+
+CRITICAL BUSINESS TYPE RULE: This is a ${businessTypeLabel} — write reviews that fit a ${typeCtx.place}.
+The reviewer ${typeCtx.visited} and is reviewing ${typeCtx.product}.
+${typeCtx.banned.length > 0 ? `NEVER use: ${typeCtx.banned.slice(0,5).join(', ')} — these are restaurant phrases only.` : ''}
 
 ---
 
