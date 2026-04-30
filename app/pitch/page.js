@@ -30,8 +30,8 @@ export default function PitchPage() {
 
   // Counter animation
   useEffect(() => {
-    const targets = { c1:60,c2:3,c3:90,c4:88,c5:27,c6:5 };
-    const suffixes = { c1:"s",c2:"x",c3:"%",c4:"%",c5:"%",c6:" min" };
+    const targets = { c1:60,c2:3,c3:32,c4:4,c5:1499,c6:5 };
+    const suffixes = { c1:"s",c2:" drafts",c3:" scans",c4:" clients",c5:" Rs/mo",c6:" min" };
     const io = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && !counted) {
         setCounted(true);
@@ -231,11 +231,11 @@ export default function PitchPage() {
 
         <div className="live-badge ir-reveal">
           <span className="live-dot" />
-          Live in 500+ restaurants across Maharashtra
+          Live with real businesses in Chh. Sambhajinagar
         </div>
 
         <h1 className="display ir-reveal d1" style={{textAlign:"center",maxWidth:760}}>
-          More Google Reviews.<br /><span className="red">Automatically.</span>
+          Your customers leave.<br /><span className="red">Reviews stay.</span>
         </h1>
 
         <p className="body-lg ir-reveal d2">
@@ -243,7 +243,7 @@ export default function PitchPage() {
         </p>
 
         <div className="hero-stats ir-reveal d3">
-          {[["60s","To post a review"],["3x","More reviews"],["4.5+","Avg rating in 30 days"]].map(([n,l]) => (
+          {[["60s","To post a review"],["3","AI options always"],["Rs.49","Per day only"]].map(([n,l]) => (
             <div className="hstat" key={n}>
               <div className="hstat-n">{n}</div>
               <div className="hstat-l">{l}</div>
@@ -478,12 +478,12 @@ export default function PitchPage() {
 
         <div className="stats-grid">
           {[
-            ["c1","seconds — average time to post a review with InsightRep"],
-            ["c2","more reviews compared to asking manually"],
-            ["c3","% customers read reviews before visiting a restaurant"],
-            ["c4","% people trust online reviews as much as personal recommendations"],
-            ["c5","% more customers walk in when rating is 4.5+ vs 4.0"],
-            ["c6","min setup time — QR ready and live for your business"],
+            ["c1","seconds — average time for customer to post a Google review"],
+            ["c2","AI review options generated every time — customer picks best one"],
+            ["c3","scans already tracked by Cliff All Day Dining & Bar — our live client"],
+            ["c4","paying clients live in Chh. Sambhajinagar right now"],
+            ["c5","per month — less than Rs.50 per day, cancel anytime"],
+            ["c6","minutes to set up — QR live and ready for your counter"],
           ].map(([id,label],i) => (
             <div className={`stat-card ir-reveal d${(i%3)+1}`} key={id}>
               <div className="stat-n" id={id}>{counters[id] || "0"}</div>
@@ -497,8 +497,8 @@ export default function PitchPage() {
           borderRadius:14,padding:"16px 24px",maxWidth:600,textAlign:"center",
           fontSize:13,color:"rgba(255,255,255,0.5)",lineHeight:1.7
         }}>
-          <strong style={{color:"#FFC107"}}>88% of customers</strong> trust online reviews as much as personal recommendations ·{" "}
-          <strong style={{color:"#FFC107"}}>4.5+ star</strong> restaurants get 27% more walk-ins
+          Live in Chh. Sambhajinagar · <strong style={{color:"#FFC107"}}>Cliff All Day Dining & Bar</strong> got 10 Google reviews in their first month ·{" "}
+          <strong style={{color:"#FFC107"}}>Zero staff training</strong> required — customers do everything themselves
         </div>
       </section>
 
@@ -515,7 +515,7 @@ export default function PitchPage() {
           <div style={{fontSize:48,marginBottom:20}}>🚀</div>
           <h2 className="display-sm" style={{marginBottom:14}}>Ready to get started?</h2>
           <p style={{fontSize:15,color:"rgba(255,255,255,0.45)",marginBottom:32,lineHeight:1.7}}>
-            7-day free trial. No credit card needed.<br/>Your QR is live in 5 minutes.
+            Setup takes 5 minutes. QR on your counter today. First reviews coming in tomorrow.
           </p>
           <a href="https://qr.insightmedia.co.in" className="cta-btn">
             Start free trial →
