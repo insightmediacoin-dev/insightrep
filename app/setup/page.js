@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   BUSINESS_ID_STORAGE_KEY,
   OWNER_IDENTIFIER_STORAGE_KEY,
@@ -456,6 +456,9 @@ export default function SetupPage() {
   const [loading,         setLoading]         = useState(false);
   const [error,           setError]           = useState("");
   const [currentStep,     setCurrentStep]     = useState(0);
+  const [saveStatus,      setSaveStatus]      = useState(""); // "" | "saving" | "saved" | "error"
+  const lastSavedRef = useRef("");
+  const saveTimerRef = useRef(null);
 
   const [businessName,     setBusinessName]     = useState("");
   const [businessType,     setBusinessType]     = useState("restaurant");
@@ -541,6 +544,58 @@ export default function SetupPage() {
     }
     return true;
   }
+
+  const autoSave = useCallback(async () => {
+    if (!businessName.trim() || !googleReviewLink.trim()) return;
+    if (!ownerIdentifier) return;
+    const selectedType      = BUSINESS_TYPES.find(t => t.value === businessType);
+    const business_category = businessType === "other" ? customCategory.trim() : selectedType?.category ?? businessType;
+    const payload = {
+      owner_phone: ownerIdentifier, name: businessName.trim(), address: address.trim(),
+      locality: locality.trim(), gmb_link: googleReviewLink.trim(), keywords: seoKeywords.trim(),
+      products: featuredProducts.trim(), business_type: businessType, business_category,
+      description: description.trim(), dining_vibe: diningVibe, price_range: priceRange,
+      customer_profiles: JSON.stringify(customerProfiles), special_features: JSON.stringify(specialFeatures),
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (fingerprint === lastSavedRef.current) return;
+    setSaveStatus("saving");
+    try {
+      const res  = await fetch("/api/business/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: fingerprint });
+      const data = await res.json();
+      if (res.ok) {
+        lastSavedRef.current = fingerprint;
+        if (data.businessId) localStorage.setItem(BUSINESS_ID_STORAGE_KEY, data.businessId);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus(""), 2000);
+      } else {
+        setSaveStatus("error");
+        setTimeout(() => setSaveStatus(""), 3000);
+      }
+    } catch {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus(""), 3000);
+    }
+  }, [ownerIdentifier, businessName, address, locality, googleReviewLink, seoKeywords,
+      featuredProducts, businessType, customCategory, description, diningVibe,
+      priceRange, customerProfiles, specialFeatures]);
+
+  // Auto-save on change — debounced 2s
+  useEffect(() => {
+    if (prefilling) return;
+    if (!businessName.trim() || !googleReviewLink.trim()) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(autoSave, 2000);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [businessName, address, locality, googleReviewLink, seoKeywords, featuredProducts,
+      businessType, description, diningVibe, priceRange, customerProfiles, specialFeatures, autoSave, prefilling]);
+
+  // Auto-save every 60 seconds
+  useEffect(() => {
+    if (prefilling) return;
+    const interval = setInterval(autoSave, 60000);
+    return () => clearInterval(interval);
+  }, [autoSave, prefilling]);
 
   async function onSubmit(e) {
     if (e?.preventDefault) e.preventDefault();
@@ -666,7 +721,12 @@ export default function SetupPage() {
         </div>
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-navy-muted/40 p-6 sm:p-8">
-          <p className="text-sm font-medium text-accent">{isEdit ? "Edit profile" : "Business setup"}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-accent">{isEdit ? "Edit profile" : "Business setup"}</p>
+            {saveStatus === "saving" && <p className="text-xs text-text-muted animate-pulse">Saving...</p>}
+            {saveStatus === "saved"  && <p className="text-xs text-green-400">✓ Saved</p>}
+            {saveStatus === "error"  && <p className="text-xs text-accent">Save failed</p>}
+          </div>
           <h1 className="mt-1 text-2xl font-bold text-white">
             {currentStep === 0 ? "Basics" : currentStep === 1 ? "Your story" : "Vibe & features"}
           </h1>
