@@ -124,26 +124,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* SOCIAL PROOF */}
-        <section className="border-t border-white/5 bg-navy-muted/20 px-4 py-10 sm:px-6">
-          <div className="mx-auto max-w-5xl">
-            <p className="text-center text-xs font-semibold uppercase tracking-widest text-text-muted mb-6">Trusted by businesses in Chh. Sambhajinagar</p>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {[
-                { name: "Cliff — All Day Dining & Bar", stat: "32 scans · 10 reviews", type: "Bar / Restaurant" },
-                { name: "Mrignayani Restaurant", stat: "Monthly plan", type: "Restaurant" },
-                { name: "Abhijeets Brew House", stat: "Active", type: "Bar" },
-                { name: "Kake di Hatti", stat: "Pure Veg Restaurant", type: "Restaurant" },
-              ].map(c => (
-                <div key={c.name} className="rounded-xl border border-white/8 bg-white/3 p-4">
-                  <p className="text-xs font-semibold text-white leading-snug">{c.name}</p>
-                  <p className="text-[10px] text-text-muted mt-1">{c.type}</p>
-                  <p className="text-[10px] text-accent mt-1">{c.stat}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        
 
         {/* HOW IT WORKS */}
         <section className="px-4 py-14 sm:px-6 sm:py-20">
