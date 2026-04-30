@@ -17,7 +17,7 @@ function weekRange() {
   return { start: prev.toISOString(), end: mon.toISOString(), label: `${fmt(prev)} – ${fmt(new Date(mon.getTime()-1))}` };
 }
 
-function buildHtml({ nam weekScans, weekReviews, totalScans, totalReviews, weekLabel }) {
+function buildHtml({ name, weekScans, weekReviews, totalScans, totalReviews, weekLabel }) {
   const monthEst = weekReviews * 4;
   const tip = weekReviews >= 5
     ? "Great week! Keep the QR visible and momentum will build."
