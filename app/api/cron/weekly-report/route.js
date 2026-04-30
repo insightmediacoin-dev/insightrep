@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase-admin";
 
-const CRON_SECRET = process.env.CRON_SECRET ?? "";
+const CRON_SECRET = process.env.CRON_SECRET || "insightrep_cron_2026";
 const FROM_EMAIL  = process.env.RESEND_FROM_EMAIL ?? "InsightRep <noreply@insightmedia.co.in>";
 
 function formatNum(n) { return (n ?? 0).toString(); }
