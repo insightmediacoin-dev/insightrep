@@ -10,11 +10,11 @@ export async function POST(request) {
   let body;
   try { body = await request.json(); } catch { return NextResponse.json({ ok: false, message: "Invalid JSON." }, { status: 400 }); }
 
-  const ownerIdentifier = String(body.owner_phone ?? body.phone ?? "").trim().toLowerCase();
-  const businessName = body.name ?? body.business_name;
-  const gmbLink = body.gmb_link ?? body.google_review_link;
-  const keywords = body.keywords ?? body.seo_keywords;
-  const products = body.products ?? body.featured_products;
+  const ownerIdentifier  = String(body.owner_phone ?? body.phone ?? "").trim().toLowerCase();
+  const businessName     = body.name ?? body.business_name;
+  const gmbLink          = body.gmb_link ?? body.google_review_link;
+  const keywords         = body.keywords ?? body.seo_keywords;
+  const products         = body.products ?? body.featured_products;
   const { address, plan, business_type, business_category } = body;
 
   if (!isValidOwnerIdentifier(ownerIdentifier)) return NextResponse.json({ ok: false, message: "Valid owner identifier required." }, { status: 400 });
@@ -31,33 +31,38 @@ export async function POST(request) {
   const isNewBusiness = !existing;
 
   const row = {
-    owner_phone: ownerIdentifier,
-    name: businessName.trim(),
-    address: String(address ?? "").trim(),
-    gmb_link: gmbLink.trim(),
-    keywords: String(keywords ?? "").trim(),
-    products: String(products ?? "").trim(),
-    plan: typeof plan === "string" && plan.trim() ? plan.trim() : "free",
-    business_type: business_type ?? "restaurant",
+    owner_phone:       ownerIdentifier,
+    name:              businessName.trim(),
+    address:           String(address ?? "").trim(),
+    locality:          String(body.locality ?? "").trim(),
+    gmb_link:          gmbLink.trim(),
+    keywords:          String(keywords ?? "").trim(),
+    products:          String(products ?? "").trim(),
+    plan:              typeof plan === "string" && plan.trim() ? plan.trim() : "free",
+    business_type:     business_type ?? "restaurant",
     business_category: String(business_category ?? "").trim(),
+    // ── NEW FIELDS ──────────────────────────────────────────────────────────
+    description:       String(body.description ?? "").trim(),
+    dining_vibe:       String(body.dining_vibe ?? "").trim(),
+    price_range:       String(body.price_range ?? "").trim(),
+    customer_profiles: String(body.customer_profiles ?? "").trim(),
+    special_features:  String(body.special_features ?? "").trim(),
   };
 
   let data, error;
 
   if (isNewBusiness) {
-    // INSERT
     const result = await admin.from("businesses").insert(row).select("id").single();
-    data = result.data;
+    data  = result.data;
     error = result.error;
   } else {
-    // UPDATE explicitly
     const result = await admin
       .from("businesses")
       .update(row)
       .eq("owner_phone", ownerIdentifier)
       .select("id")
       .single();
-    data = result.data;
+    data  = result.data;
     error = result.error;
   }
 
@@ -65,16 +70,15 @@ export async function POST(request) {
 
   // Send welcome email only for new signups with email identifier
   if (isNewBusiness && isValidEmail(ownerIdentifier)) {
-    const resendKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.RESEND_FROM_EMAIL ?? "InsightRep <noreply@insightmedia.co.in>";
+    const resendKey  = process.env.RESEND_API_KEY;
+    const fromEmail  = process.env.RESEND_FROM_EMAIL ?? "InsightRep <noreply@insightmedia.co.in>";
 
     if (resendKey) {
-      const resend = new Resend(resendKey);
-      const reviewUrl = `https://qr.insightmedia.co.in/review/${data.id}`;
+      const resend    = new Resend(resendKey);
 
       await resend.emails.send({
-        from: fromEmail,
-        to: [ownerIdentifier],
+        from:    fromEmail,
+        to:      [ownerIdentifier],
         subject: `Welcome to InsightRep, ${businessName.trim()}!`,
         html: `
           <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;background:#0f1729;color:#fff;border-radius:16px;overflow:hidden">
