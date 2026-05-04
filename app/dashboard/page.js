@@ -14,6 +14,13 @@ function formatCreatedAt(iso) {
   } catch { return "—"; }
 }
 
+function formatFeedbackDate(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  } catch { return "—"; }
+}
+
 function WelcomeModal({ business, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
@@ -129,25 +136,20 @@ function OnboardingChecklist({ stats, onDownloadQR, reviewUrl, business, router 
   );
 }
 
-// ─── RATING ESTIMATOR ─────────────────────────────────────────────────────────
 function RatingEstimator({ stats, business }) {
   const [currentRating, setCurrentRating] = useState("");
   const [currentReviews, setCurrentReviews] = useState("");
 
-  // Reviews per week estimate based on InsightRep usage
-  // ~70% of scans convert to review copies, ~60% of copies get posted
   const weeklyReviews = stats.scans > 0
-    ? Math.max(1, Math.round((stats.reviews / Math.max(1, Math.ceil((Date.now() - new Date(business?.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000)))) ))
-    : 3; // default estimate for new businesses
+    ? Math.max(1, Math.round((stats.reviews / Math.max(1, Math.ceil((Date.now() - new Date(business?.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000))))))
+    : 3;
 
   function estimateNewRating(currentRating, currentCount, newReviews, newRatingAvg = 4.6) {
     if (!currentRating || !currentCount) return null;
     const cr = parseFloat(currentRating);
     const cc = parseInt(currentCount);
     if (isNaN(cr) || isNaN(cc) || cr < 1 || cr > 5 || cc < 0) return null;
-    const totalScore = cr * cc + newRatingAvg * newReviews;
-    const totalCount = cc + newReviews;
-    return Math.min(5, totalScore / totalCount);
+    return Math.min(5, (cr * cc + newRatingAvg * newReviews) / (cc + newReviews));
   }
 
   function weeksToTarget(currentRating, currentCount, target = 4.5, weeklyNew = weeklyReviews) {
@@ -157,15 +159,14 @@ function RatingEstimator({ stats, business }) {
     if (isNaN(cr) || isNaN(cc)) return null;
     if (cr >= target) return 0;
     for (let w = 1; w <= 52; w++) {
-      const newRating = estimateNewRating(cr, cc, w * weeklyNew);
-      if (newRating >= target) return w;
+      if (estimateNewRating(cr, cc, w * weeklyNew) >= target) return w;
     }
     return null;
   }
 
   const hasInput = currentRating && currentReviews;
-  const rating1m  = hasInput ? estimateNewRating(currentRating, currentReviews, weeklyReviews * 4) : null;
-  const rating3m  = hasInput ? estimateNewRating(currentRating, currentReviews, weeklyReviews * 12) : null;
+  const rating1m = hasInput ? estimateNewRating(currentRating, currentReviews, weeklyReviews * 4) : null;
+  const rating3m = hasInput ? estimateNewRating(currentRating, currentReviews, weeklyReviews * 12) : null;
   const weeksTo45 = hasInput ? weeksToTarget(currentRating, currentReviews, 4.5) : null;
   const weeksTo46 = hasInput ? weeksToTarget(currentRating, currentReviews, 4.6) : null;
 
@@ -183,32 +184,20 @@ function RatingEstimator({ stats, business }) {
         <h2 className="text-lg font-bold text-white mt-1">Where will your rating go?</h2>
         <p className="text-xs text-text-muted mt-0.5">Enter your current Google rating to see your projected growth</p>
       </div>
-
-      {/* Inputs */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Current rating</label>
-          <input
-            type="number" min="1" max="5" step="0.1"
-            value={currentRating}
-            onChange={e => setCurrentRating(e.target.value)}
-            placeholder="e.g. 4.1"
-            className="w-full rounded-xl border border-white/15 bg-navy/60 px-3 py-2.5 text-white text-sm outline-none focus:border-accent placeholder:text-white/20"
-          />
+          <input type="number" min="1" max="5" step="0.1" value={currentRating}
+            onChange={e => setCurrentRating(e.target.value)} placeholder="e.g. 4.1"
+            className="w-full rounded-xl border border-white/15 bg-navy/60 px-3 py-2.5 text-white text-sm outline-none focus:border-accent placeholder:text-white/20" />
         </div>
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Total reviews</label>
-          <input
-            type="number" min="0"
-            value={currentReviews}
-            onChange={e => setCurrentReviews(e.target.value)}
-            placeholder="e.g. 47"
-            className="w-full rounded-xl border border-white/15 bg-navy/60 px-3 py-2.5 text-white text-sm outline-none focus:border-accent placeholder:text-white/20"
-          />
+          <input type="number" min="0" value={currentReviews}
+            onChange={e => setCurrentReviews(e.target.value)} placeholder="e.g. 47"
+            className="w-full rounded-xl border border-white/15 bg-navy/60 px-3 py-2.5 text-white text-sm outline-none focus:border-accent placeholder:text-white/20" />
         </div>
       </div>
-
-      {/* Weekly pace */}
       <div className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/4 px-4 py-3">
         <div className="text-xl">📈</div>
         <div>
@@ -216,33 +205,20 @@ function RatingEstimator({ stats, business }) {
           <p className="text-sm font-semibold text-white">~{weeklyReviews} new reviews per week</p>
         </div>
       </div>
-
-      {/* Results */}
       {hasInput && rating1m !== null && (
         <div className="space-y-3">
-          {/* Projection cards */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-white/10 bg-navy/60 p-4 text-center space-y-1">
               <p className="text-xs text-text-muted">After 1 month</p>
-              <p className={`text-2xl font-bold ${ratingColor(rating1m)}`}>
-                {rating1m?.toFixed(1)}
-              </p>
-              <p className="text-xs text-text-muted">
-                +{weeklyReviews * 4} reviews
-              </p>
+              <p className={`text-2xl font-bold ${ratingColor(rating1m)}`}>{rating1m?.toFixed(1)}</p>
+              <p className="text-xs text-text-muted">+{weeklyReviews * 4} reviews</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-navy/60 p-4 text-center space-y-1">
               <p className="text-xs text-text-muted">After 3 months</p>
-              <p className={`text-2xl font-bold ${ratingColor(rating3m)}`}>
-                {rating3m?.toFixed(1)}
-              </p>
-              <p className="text-xs text-text-muted">
-                +{weeklyReviews * 12} reviews
-              </p>
+              <p className={`text-2xl font-bold ${ratingColor(rating3m)}`}>{rating3m?.toFixed(1)}</p>
+              <p className="text-xs text-text-muted">+{weeklyReviews * 12} reviews</p>
             </div>
           </div>
-
-          {/* Target milestones */}
           <div className="space-y-2">
             {weeksTo45 === 0 ? (
               <div className="flex items-center gap-3 rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3">
@@ -258,17 +234,9 @@ function RatingEstimator({ stats, business }) {
                     <p className="text-xs text-text-muted">Google shows you above competitors</p>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-accent">{weeksTo45} {weeksTo45 === 1 ? "week" : "weeks"}</p>
-                </div>
+                <p className="text-sm font-bold text-accent">{weeksTo45} {weeksTo45 === 1 ? "week" : "weeks"}</p>
               </div>
-            ) : (
-              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-navy/60 px-4 py-3">
-                <span className="text-lg">⭐</span>
-                <p className="text-sm text-text-muted">Keep generating reviews — 4.5 is achievable</p>
-              </div>
-            )}
-
+            ) : null}
             {weeksTo46 !== null && weeksTo46 > 0 && (
               <div className="flex items-center justify-between rounded-xl border border-white/10 bg-navy/60 px-4 py-3">
                 <div className="flex items-center gap-3">
@@ -278,14 +246,10 @@ function RatingEstimator({ stats, business }) {
                     <p className="text-xs text-text-muted">Top 10% of restaurants in your city</p>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-accent">{weeksTo46} {weeksTo46 === 1 ? "week" : "weeks"}</p>
-                </div>
+                <p className="text-sm font-bold text-accent">{weeksTo46} {weeksTo46 === 1 ? "week" : "weeks"}</p>
               </div>
             )}
           </div>
-
-          {/* Insight */}
           <div className="rounded-xl border border-accent/15 bg-accent/5 px-4 py-3">
             <p className="text-xs text-text-muted leading-relaxed">
               <span className="text-white font-semibold">Why this matters: </span>
@@ -294,8 +258,6 @@ function RatingEstimator({ stats, business }) {
           </div>
         </div>
       )}
-
-      {/* Empty state */}
       {!hasInput && (
         <div className="text-center py-4">
           <p className="text-xs text-text-muted">Enter your current Google rating above to see your growth projection</p>
@@ -306,6 +268,66 @@ function RatingEstimator({ stats, business }) {
           </p>
         </div>
       )}
+    </section>
+  );
+}
+
+// ─── NEGATIVE FEEDBACK SECTION ────────────────────────────────────────────────
+function FeedbackSection({ businessId }) {
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!businessId) return;
+    fetch(`/api/business/feedback?businessId=${businessId}`)
+      .then(r => r.json())
+      .then(d => { if (d.ok) setFeedbacks(d.feedbacks ?? []); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [businessId]);
+
+  if (loading) return null;
+  if (feedbacks.length === 0) return null;
+
+  return (
+    <section className="rounded-2xl border border-red-500/20 bg-red-950/10 p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-red-400">Private Feedback</p>
+          <h2 className="text-lg font-bold text-white mt-1">Customer complaints</h2>
+          <p className="text-xs text-text-muted mt-0.5">Only visible to you — not posted on Google</p>
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/15 text-lg">
+          {feedbacks.length}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {feedbacks.map((f) => (
+          <div key={f.id} className="rounded-xl border border-red-500/15 bg-red-950/20 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <span key={n} className={`text-sm ${n <= f.rating ? "text-[#F4B400]" : "text-white/10"}`}>★</span>
+                ))}
+              </div>
+              <p className="text-xs text-text-muted">{formatFeedbackDate(f.created_at)}</p>
+            </div>
+            {f.feedback ? (
+              <p className="text-sm text-white/80 leading-relaxed">{f.feedback}</p>
+            ) : (
+              <p className="text-xs text-text-muted italic">No message left</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-white/8 bg-white/4 px-4 py-3">
+        <p className="text-xs text-text-muted leading-relaxed">
+          <span className="text-white font-medium">Tip: </span>
+          Use this feedback to fix recurring issues before they become public 1-star reviews.
+        </p>
+      </div>
     </section>
   );
 }
@@ -322,11 +344,10 @@ function PricingSection({ currentPlan }) {
             <p className="text-xs text-text-muted mt-1">Rs.49 per day · Cancel anytime</p>
           </div>
           <ul className="space-y-2 text-sm text-text-muted">
-            {["Unlimited QR scans", "AI review generation", "3-5 star filter", "Dashboard analytics", "Weekly email report", "PNG QR download"].map(f => (
+            {["Unlimited QR scans", "AI review generation", "Dashboard analytics", "Weekly email report", "PNG QR download", "Private complaint inbox"].map(f => (
               <li key={f} className="flex items-center gap-2"><span className="text-accent">✓</span>{f}</li>
             ))}
           </ul>
-          <p className="text-center text-xs text-text-muted">No contract · Cancel anytime with 7 days notice</p>
           <button disabled className="w-full rounded-full border border-white/15 py-2.5 text-sm font-semibold text-text-muted cursor-not-allowed opacity-60">
             {currentPlan === 'monthly' ? 'Current Plan' : 'Coming Soon'}
           </button>
@@ -344,7 +365,6 @@ function PricingSection({ currentPlan }) {
               <li key={f} className="flex items-center gap-2"><span className="text-accent">✓</span>{f}</li>
             ))}
           </ul>
-          <p className="text-center text-xs text-text-muted">Save Rs.4,998 · Free setup call included</p>
           <button disabled className="w-full rounded-full bg-accent py-2.5 text-sm font-semibold text-white cursor-not-allowed opacity-60">
             {currentPlan === 'annual' ? 'Current Plan' : 'Coming Soon'}
           </button>
@@ -369,22 +389,20 @@ export default function DashboardPage() {
   const loadBusiness = useCallback(async () => {
     const identifier = localStorage.getItem(OWNER_IDENTIFIER_STORAGE_KEY);
     if (!identifier) return router.replace("/login");
-    // Always clear cached ID to ensure fresh data — reflects plan changes from admin
-localStorage.removeItem(BUSINESS_ID_STORAGE_KEY);
-let id = null;
+    localStorage.removeItem(BUSINESS_ID_STORAGE_KEY);
+    let id = null;
     try {
-      if (!id) {
-        const lr = await fetch(`/api/business/lookup?identifier=${encodeURIComponent(identifier)}`);
-        const lj = await lr.json();
-        if (!lr.ok || !lj.business) {
-          setLoadError("No business yet — complete setup first.");
-          setBusiness(null);
-          setLoading(false);
-          return;
-        }
-        id = lj.business.id;
-        localStorage.setItem(BUSINESS_ID_STORAGE_KEY, id);
+      const lr = await fetch(`/api/business/lookup?identifier=${encodeURIComponent(identifier)}`);
+      const lj = await lr.json();
+      if (!lr.ok || !lj.business) {
+        setLoadError("No business yet — complete setup first.");
+        setBusiness(null);
+        setLoading(false);
+        return;
       }
+      id = lj.business.id;
+      localStorage.setItem(BUSINESS_ID_STORAGE_KEY, id);
+
       const [bizRes, statsRes] = await Promise.all([
         fetch(`/api/business/${id}`),
         fetch(`/api/business/stats?businessId=${id}`),
@@ -459,7 +477,6 @@ let id = null;
 
       <div className="mx-auto flex max-w-3xl flex-col gap-8">
 
-        {/* Header */}
         <header className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-accent">Dashboard</p>
@@ -479,20 +496,14 @@ let id = null;
           </div>
         </header>
 
-        {/* Onboarding Checklist */}
         {(stats.scans === 0 || stats.reviews === 0 || !(business?.owner_name && business?.owner_designation && business?.owner_city)) && (
-          <OnboardingChecklist
-            stats={stats} onDownloadQR={downloadQR}
-            reviewUrl={reviewUrl} business={business} router={router}
-          />
+          <OnboardingChecklist stats={stats} onDownloadQR={downloadQR} reviewUrl={reviewUrl} business={business} router={router} />
         )}
 
-        {/* Address */}
         <section className="rounded-2xl border border-white/10 bg-navy-muted/40 p-5">
           <p className="text-white">{business.address || "—"}</p>
         </section>
 
-        {/* Analytics */}
         <section className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 text-center">
             <p className="text-3xl font-bold text-white">{stats.scans}</p>
@@ -504,10 +515,11 @@ let id = null;
           </div>
         </section>
 
-        {/* ── RATING ESTIMATOR ── */}
         <RatingEstimator stats={stats} business={business} />
 
-        {/* QR */}
+        {/* Negative feedback — only renders if there's data */}
+        <FeedbackSection businessId={business?.id} />
+
         <section className="grid gap-8 lg:grid-cols-2">
           <div className="flex flex-col gap-4">
             <div style={{ position: "absolute", left: -9999, top: -9999 }}>
@@ -545,7 +557,6 @@ let id = null;
           </div>
         </section>
 
-        {/* Pricing */}
         <PricingSection currentPlan={business.plan} />
 
       </div>
