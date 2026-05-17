@@ -42,8 +42,7 @@ function WelcomeModal({ business, onClose }) {
           </ol>
         </div>
         <div className="flex flex-col gap-3">
-          <button onClick={onClose}
-            className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110">
+          <button onClick={onClose} className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110">
             Go to Dashboard
           </button>
           <a href={`https://wa.me/917387609098?text=Hi, I just signed up on InsightRep — ${business.name}`}
@@ -272,7 +271,80 @@ function RatingEstimator({ stats, business }) {
   );
 }
 
-// ─── NEGATIVE FEEDBACK SECTION ────────────────────────────────────────────────
+function FeedbackCard({ f }) {
+  const [open, setOpen] = useState(false);
+
+  function parseIssues(feedback) {
+    if (!feedback) return { issues: [], comment: "" };
+    const lines = feedback.split("\n");
+    let issues = [];
+    let comment = "";
+    for (const line of lines) {
+      if (line.startsWith("Issues: ")) {
+        issues = line.replace("Issues: ", "").split(", ");
+      } else if (line.trim()) {
+        comment = line;
+      }
+    }
+    return { issues, comment };
+  }
+
+  const { issues, comment } = parseIssues(f.feedback);
+
+  return (
+    <div
+      onClick={() => setOpen(!open)}
+      className="rounded-xl border border-red-500/15 bg-red-950/20 p-4 space-y-2 cursor-pointer hover:border-red-500/30 transition-all"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex gap-0.5">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <span key={n} className={`text-sm ${n <= f.rating ? "text-[#F4B400]" : "text-white/10"}`}>★</span>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-text-muted">{formatFeedbackDate(f.created_at)}</p>
+          <span className="text-white/30 text-xs">{open ? "▲" : "▼"}</span>
+        </div>
+      </div>
+
+      {issues.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {issues.map((issue) => (
+            <span key={issue} className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-300">
+              {issue}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div className="pt-3 mt-1 border-t border-white/8 space-y-3">
+          {comment ? (
+            <p className="text-sm text-white/80 leading-relaxed">{comment}</p>
+          ) : null}
+          {(f.customer_name || f.customer_phone) ? (
+            <div className="flex items-center gap-3 rounded-lg border border-white/8 bg-white/4 px-3 py-2">
+              <span className="text-sm">👤</span>
+              <div className="text-xs space-x-2">
+                {f.customer_name && <span className="text-white font-medium">{f.customer_name}</span>}
+                {f.customer_phone && (
+                  <a href={`tel:${f.customer_phone}`} onClick={e => e.stopPropagation()} className="text-accent hover:underline">
+                    {f.customer_phone}
+                  </a>
+                )}
+              </div>
+            </div>
+          ) : null}
+          {!comment && !f.customer_name && !f.customer_phone && (
+            <p className="text-xs text-text-muted italic">No additional details provided</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FeedbackSection({ businessId }) {
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -297,35 +369,19 @@ function FeedbackSection({ businessId }) {
           <h2 className="text-lg font-bold text-white mt-1">Customer complaints</h2>
           <p className="text-xs text-text-muted mt-0.5">Only visible to you — not posted on Google</p>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/15 text-lg">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/15 text-lg font-bold text-red-400">
           {feedbacks.length}
         </div>
       </div>
 
       <div className="space-y-3">
-        {feedbacks.map((f) => (
-          <div key={f.id} className="rounded-xl border border-red-500/15 bg-red-950/20 p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <span key={n} className={`text-sm ${n <= f.rating ? "text-[#F4B400]" : "text-white/10"}`}>★</span>
-                ))}
-              </div>
-              <p className="text-xs text-text-muted">{formatFeedbackDate(f.created_at)}</p>
-            </div>
-            {f.feedback ? (
-              <p className="text-sm text-white/80 leading-relaxed">{f.feedback}</p>
-            ) : (
-              <p className="text-xs text-text-muted italic">No message left</p>
-            )}
-          </div>
-        ))}
+        {feedbacks.map((f) => <FeedbackCard key={f.id} f={f} />)}
       </div>
 
       <div className="rounded-xl border border-white/8 bg-white/4 px-4 py-3">
         <p className="text-xs text-text-muted leading-relaxed">
           <span className="text-white font-medium">Tip: </span>
-          Use this feedback to fix recurring issues before they become public 1-star reviews.
+          Tap any card to see full details. Call back customers who left their number.
         </p>
       </div>
     </section>
@@ -517,7 +573,6 @@ export default function DashboardPage() {
 
         <RatingEstimator stats={stats} business={business} />
 
-        {/* Negative feedback — only renders if there's data */}
         <FeedbackSection businessId={business?.id} />
 
         <section className="grid gap-8 lg:grid-cols-2">
