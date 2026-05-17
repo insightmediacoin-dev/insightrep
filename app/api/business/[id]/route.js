@@ -1,36 +1,518 @@
-import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase-admin";
+"use client";
 
-const BUSINESS_COLUMNS =
-  "id, created_at, owner_phone, name, address, locality, gmb_link, keywords, products, plan, owner_name, owner_designation, owner_city, owner_whatsapp, business_type, business_category, description, dining_vibe, price_range, customer_profiles, special_features";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
-export async function GET(_request, context) {
-  const admin = createAdminClient();
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, message: "Supabase admin client not configured." },
-      { status: 500 },
+const CHIPS_BY_TYPE = {
+  restaurant: ["Food", "Service", "Ambiance", "Value for money"],
+  cafe: ["Coffee", "Food", "Ambiance", "Service"],
+  hotel: ["Rooms", "Service", "Cleanliness", "Location"],
+  bar: ["Drinks", "Ambiance", "Service", "Music"],
+  bakery: ["Products", "Taste", "Freshness", "Service"],
+  fastfood: ["Food", "Speed", "Value", "Service"],
+  dhaba: ["Food", "Taste", "Value", "Vibe"],
+  salon: ["Service", "Staff", "Cleanliness", "Value"],
+  gym: ["Equipment", "Trainers", "Cleanliness", "Membership"],
+  retail: ["Products", "Service", "Pricing", "Experience"],
+  clinic: ["Doctor", "Staff", "Cleanliness", "Service"],
+  agency: ["Service", "Professionalism", "Results", "Communication"],
+  education: ["Teaching", "Faculty", "Facilities", "Results"],
+  travel: ["Service", "Experience", "Value", "Guide"],
+  other: ["Service", "Quality", "Experience", "Value"],
+};
+
+const ISSUE_CHIPS_BY_TYPE = {
+  restaurant: ["Food quality", "Slow service", "Staff behaviour", "Cleanliness", "Wrong order", "Pricing / Value", "Ambience / Noise", "Long wait time"],
+  cafe: ["Coffee quality", "Slow service", "Staff behaviour", "Cleanliness", "Wrong order", "Pricing / Value", "Ambience / Noise", "Long wait time"],
+  hotel: ["Room cleanliness", "Slow service", "Staff behaviour", "Noise", "Billing issue", "Facilities", "Location access", "Check-in delay"],
+  bar: ["Drink quality", "Slow service", "Staff behaviour", "Noise level", "Pricing / Value", "Cleanliness", "Music too loud", "Long wait time"],
+  bakery: ["Product quality", "Taste", "Freshness", "Staff behaviour", "Pricing / Value", "Cleanliness", "Wrong item", "Slow service"],
+  fastfood: ["Food quality", "Speed", "Wrong order", "Cleanliness", "Staff behaviour", "Pricing / Value", "Packaging", "Cold food"],
+  dhaba: ["Food quality", "Taste", "Slow service", "Cleanliness", "Staff behaviour", "Pricing / Value", "Portion size", "Ambience"],
+  salon: ["Service quality", "Staff behaviour", "Cleanliness", "Pricing / Value", "Long wait time", "Result not as expected", "Hygiene", "Appointment issue"],
+  gym: ["Equipment issue", "Cleanliness", "Trainer behaviour", "Overcrowding", "Membership / Billing", "Facilities", "Noise", "Long wait time"],
+  retail: ["Product quality", "Staff behaviour", "Pricing", "Wrong item", "Billing issue", "Cleanliness", "Stock unavailable", "Return policy"],
+  clinic: ["Long wait time", "Doctor behaviour", "Staff behaviour", "Cleanliness", "Billing issue", "Diagnosis concern", "Hygiene", "Appointment issue"],
+  agency: ["Poor communication", "Missed deadline", "Quality of work", "Pricing / Value", "Staff behaviour", "No results", "Unprofessional", "Billing issue"],
+  education: ["Teaching quality", "Faculty behaviour", "Facilities", "Fees / Billing", "Poor results", "Staff behaviour", "Scheduling issue", "Infrastructure"],
+  travel: ["Poor experience", "Guide behaviour", "Value for money", "Safety concern", "Itinerary issue", "Vehicle quality", "Cleanliness", "Timing"],
+  other: ["Quality", "Service", "Staff behaviour", "Pricing / Value", "Cleanliness", "Long wait time", "Billing issue", "Communication"],
+};
+
+function NegativeFeedbackCard({ businessId, rating, businessType }) {
+  const [selectedIssues, setSelectedIssues] = useState([]);
+  const [comment, setComment] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const issueChips = ISSUE_CHIPS_BY_TYPE[businessType ?? "other"] ?? ISSUE_CHIPS_BY_TYPE.other;
+
+  function toggleIssue(issue) {
+    setSelectedIssues((prev) =>
+      prev.includes(issue) ? prev.filter((i) => i !== issue) : [...prev, issue]
     );
   }
 
-  const { id } = await context.params;
+  async function submit() {
+    setBusy(true);
+    try {
+      const feedbackParts = [];
+      if (selectedIssues.length) feedbackParts.push("Issues: " + selectedIssues.join(", "));
+      if (comment.trim()) feedbackParts.push(comment.trim());
+      const feedbackText = feedbackParts.join("\n") || null;
 
-  const { data, error } = await admin
-    .from("businesses")
-    .select(BUSINESS_COLUMNS)
-    .eq("id", id)
-    .maybeSingle();
+      await fetch("/api/business/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessId,
+          rating,
+          feedback: feedbackText,
+          customerName: customerName.trim() || null,
+          customerPhone: customerPhone.trim() || null,
+        }),
+      });
+    } catch {}
+    setSubmitted(true);
+    setBusy(false);
+  }
 
-  if (error) {
-    return NextResponse.json(
-      { ok: false, message: error.message },
-      { status: 500 },
+  if (submitted) {
+    return (
+      <div className="mt-4 rounded-2xl border border-green-500/30 bg-green-950/40 p-5 text-center space-y-1">
+        <p className="text-green-400 font-semibold text-sm">Thank you for letting us know.</p>
+        <p className="text-xs text-text-muted">We'll look into this and make it right.</p>
+      </div>
     );
   }
 
-  if (!data) {
-    return NextResponse.json({ ok: false, message: "Not found." }, { status: 404 });
+  return (
+    <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-950/20 p-5 space-y-5">
+
+      <div className="rounded-xl border border-red-500/20 bg-red-950/30 px-4 py-3 text-center">
+        <p className="text-sm font-medium text-red-300">
+          We're sorry to hear that! Please contact us directly so we can make it right.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/40">What went wrong?</p>
+        <div className="flex flex-wrap gap-2">
+          {issueChips.map((issue) => {
+            const on = selectedIssues.includes(issue);
+            return (
+              <button
+                key={issue}
+                type="button"
+                onClick={() => toggleIssue(issue)}
+                className={
+                  "rounded-full border px-3 py-1.5 text-xs font-medium transition " +
+                  (on
+                    ? "border-red-400/60 bg-red-500/20 text-red-300"
+                    : "border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/70")
+                }
+              >
+                {issue}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
+          Anything else? <span className="normal-case font-normal text-white/25">(Optional)</span>
+        </p>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Tell us more…"
+          rows={2}
+          maxLength={300}
+          className="w-full rounded-xl border border-white/10 bg-navy/60 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-red-400/50 focus:outline-none resize-none transition"
+        />
+        {comment.length > 0 && (
+          <p className="text-right text-xs text-white/20">{comment.length}/300</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
+          Your contact <span className="normal-case font-normal text-white/25">(Optional — so we can follow up)</span>
+        </p>
+        <input
+          type="text"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          placeholder="Your name"
+          autoComplete="name"
+          className="w-full rounded-xl border border-white/10 bg-navy/60 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-red-400/50 focus:outline-none transition"
+        />
+        <input
+          type="tel"
+          value={customerPhone}
+          onChange={(e) => setCustomerPhone(e.target.value)}
+          placeholder="Phone number"
+          autoComplete="tel"
+          className="w-full rounded-xl border border-white/10 bg-navy/60 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-red-400/50 focus:outline-none transition"
+        />
+      </div>
+
+      <button
+        type="button"
+        disabled={busy || (!selectedIssues.length && !comment.trim())}
+        onClick={submit}
+        className="flex h-11 w-full items-center justify-center rounded-full bg-red-600 text-sm font-semibold text-white disabled:opacity-40 hover:brightness-110 transition"
+      >
+        {busy ? "Sending…" : "Send feedback"}
+      </button>
+
+      <p className="text-center text-xs text-white/25">
+        Your feedback goes directly to the owner — not posted publicly.
+      </p>
+    </div>
+  );
+}
+
+function RatingStep({ rating, hoverRating, setRating, setHoverRating, onContinue, businessId, businessType }) {
+  const preview = hoverRating ?? rating ?? 0;
+  const isNegative = rating !== null && rating <= 2;
+  const canContinue = rating !== null && rating >= 3;
+
+  let positiveLabel = "";
+  if (rating === 3) positiveLabel = "Good";
+  else if (rating === 4) positiveLabel = "Very Good";
+  else if (rating === 5) positiveLabel = "Excellent!";
+
+  return (
+    <section className="mt-10 space-y-4">
+      <h2 className="text-lg font-semibold text-white">How was your experience?</h2>
+      <p className="text-sm text-text-muted">Tap a star to rate — then continue if you'd like to leave a public review.</p>
+      <div
+        className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2"
+        onMouseLeave={() => setHoverRating(null)}
+        role="radiogroup"
+        aria-label="Star rating"
+      >
+        {[1, 2, 3, 4, 5].map((n) => {
+          const filled = preview >= n;
+          return (
+            <button
+              key={n}
+              type="button"
+              aria-label={"Rate " + n + " out of 5 stars"}
+              onMouseEnter={() => setHoverRating(n)}
+              onFocus={() => setHoverRating(n)}
+              onBlur={() => setHoverRating(null)}
+              onClick={() => setRating(n)}
+              className={"flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-[clamp(2.5rem,11vw,3rem)] leading-none transition-all duration-200 ease-out hover:scale-110 focus:outline-none active:scale-95 sm:min-h-[52px] sm:min-w-[52px] " + (filled ? "text-[#F4B400] drop-shadow-[0_0_14px_rgba(244,180,0,0.45)]" : "text-white/20")}
+            >
+              ★
+            </button>
+          );
+        })}
+      </div>
+
+      {isNegative && (
+        <NegativeFeedbackCard
+          businessId={businessId}
+          rating={rating}
+          businessType={businessType}
+        />
+      )}
+
+      {positiveLabel && (
+        <p className="mt-2 text-center text-xl font-bold tracking-tight text-[#F4B400] drop-shadow-sm">{positiveLabel}</p>
+      )}
+
+      {!isNegative && (
+        <button
+          type="button"
+          disabled={!canContinue}
+          onClick={onContinue}
+          className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Continue
+        </button>
+      )}
+    </section>
+  );
+}
+
+export default function CustomerReviewPage() {
+  const params = useParams();
+  const router = useRouter();
+  const businessId = params.businessId;
+
+  const [business, setBusiness] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const [rating, setRating] = useState(null);
+  const [hoverRating, setHoverRating] = useState(null);
+  const [aspects, setAspects] = useState([]);
+  const [customNote, setCustomNote] = useState("");
+  const [reviews, setReviews] = useState([]);
+  const [selected, setSelected] = useState(0);
+  const [step, setStep] = useState("loading");
+  const [genError, setGenError] = useState("");
+  const [limitReached, setLimitReached] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!businessId) return;
+    let cancelled = false;
+
+    async function load() {
+      setLoadError("");
+      try {
+        const res = await fetch("/api/business/" + businessId);
+        const data = await res.json();
+        if (cancelled) return;
+        if (!res.ok) { setLoadError(data.message ?? "Business not found."); setStep("error"); return; }
+        setBusiness(data.business);
+        setStep("rating");
+
+        fetch("/api/business/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ businessId }),
+        }).catch(() => {});
+      } catch {
+        if (!cancelled) { setLoadError("Could not load this business."); setStep("error"); }
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [businessId]);
+
+  useEffect(() => {
+    if (step !== "success") return;
+    if (countdown <= 0) { window.location.href = business?.gmb_link ?? "/"; return; }
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [step, countdown, business]);
+
+  const chips = CHIPS_BY_TYPE[business?.business_type ?? "restaurant"] ?? CHIPS_BY_TYPE.restaurant;
+
+  const toggleAspect = useCallback((id) => {
+    setAspects((prev) => prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]);
+  }, []);
+
+  async function generate() {
+    if (!rating || rating < 3) return;
+    setGenError("");
+    setLimitReached(false);
+    setBusy(true);
+    setStep("generating");
+    try {
+      const res = await fetch("/api/generate-reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId, rating, aspects, customNote: customNote.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.limitReached) {
+          setLimitReached(true);
+          setGenError("This business has reached its free plan limit for this month.");
+        } else {
+          setGenError(data.message ?? "Generation failed.");
+        }
+        setStep("aspects");
+        return;
+      }
+      setReviews(data.reviews);
+      setSelected(0);
+      setStep("pick");
+    } finally { setBusy(false); }
   }
 
-  return NextResponse.json({ ok: true, business: data });
+  async function copyAndOpen() {
+    if (!business?.gmb_link || !reviews[selected]) return;
+    setBusy(true);
+    setGenError("");
+    try {
+      await navigator.clipboard.writeText(reviews[selected]);
+      setCopied(true);
+    } catch {
+      setGenError("Could not access clipboard. Copy the text manually.");
+      setBusy(false);
+      return;
+    }
+
+    fetch("/api/business/track-review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businessId, rating }),
+    }).catch(() => {});
+
+    setCountdown(5);
+    setStep("success");
+    setBusy(false);
+  }
+
+  if (step === "loading") return (
+    <div className="flex min-h-[50vh] items-center justify-center bg-navy text-text-muted">Loading…</div>
+  );
+
+  if (step === "error") return (
+    <div className="min-h-[100dvh] bg-navy px-4 py-16 text-center">
+      <p className="text-accent">{loadError}</p>
+      <Link href="/" className="mt-6 inline-block text-sm text-white underline">Home</Link>
+    </div>
+  );
+
+  return (
+    <div className="min-h-[100dvh] bg-navy px-4 py-8 pb-16 sm:py-12">
+      <div className="mx-auto max-w-lg">
+        <p className="text-center text-xs font-medium uppercase tracking-wide text-accent">InsightRep</p>
+        <h1 className="mt-2 text-center text-2xl font-bold text-white">{business.name}</h1>
+        {business.address && <p className="mt-2 text-center text-sm text-text-muted">{business.address}</p>}
+
+        {step === "rating" && (
+          <RatingStep
+            rating={rating}
+            hoverRating={hoverRating}
+            setRating={setRating}
+            setHoverRating={setHoverRating}
+            onContinue={() => setStep("aspects")}
+            businessId={businessId}
+            businessType={business?.business_type}
+          />
+        )}
+
+        {step === "aspects" && (
+          <section className="mt-10 space-y-6">
+            <button type="button" onClick={() => setStep("rating")} className="text-sm text-text-muted hover:text-white">← Back</button>
+            <h2 className="text-lg font-semibold text-white">What stood out?</h2>
+            <p className="text-sm text-text-muted">Pick any that apply.</p>
+            <div className="flex flex-wrap gap-2">
+              {chips.map((c) => {
+                const on = aspects.includes(c);
+                return (
+                  <button key={c} type="button" onClick={() => toggleAspect(c)}
+                    className={"rounded-full border px-4 py-2 text-sm font-medium transition " + (on ? "border-accent bg-accent/15 text-accent" : "border-white/15 text-text-muted hover:border-white/30 hover:text-white")}>
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm text-text-muted">
+                Anything specific you'd like to mention? <span className="text-white/30">(Optional)</span>
+              </label>
+              <textarea
+                value={customNote}
+                onChange={(e) => setCustomNote(e.target.value)}
+                placeholder="e.g. The pasta was amazing, staff was very welcoming…"
+                rows={3}
+                maxLength={300}
+                className="w-full rounded-2xl border border-white/10 bg-navy-muted/40 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-accent focus:outline-none resize-none transition"
+              />
+              {customNote.length > 0 && (
+                <p className="text-right text-xs text-white/20">{customNote.length}/300</p>
+              )}
+            </div>
+
+            {limitReached && (
+              <div className="rounded-2xl border border-accent/30 bg-accent/5 p-5 text-center space-y-2">
+                <p className="text-sm font-semibold text-accent">Monthly limit reached</p>
+                <p className="text-xs text-text-muted">This business has used all 10 free AI reviews this month. The owner needs to upgrade to continue.</p>
+              </div>
+            )}
+
+            {genError && !limitReached && <p className="text-sm text-accent" role="alert">{genError}</p>}
+
+            <button type="button" disabled={busy || limitReached} onClick={generate}
+              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white disabled:opacity-50">
+              {busy ? "Generating…" : "Generate review options"}
+            </button>
+          </section>
+        )}
+
+        {step === "generating" && (
+          <div className="mt-16 flex flex-col items-center gap-4 text-text-muted">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            <p className="text-sm">Writing three options for you…</p>
+          </div>
+        )}
+
+        {step === "pick" && (
+          <section className="mt-10 space-y-6">
+            <h2 className="text-lg font-semibold text-white">Pick one to copy</h2>
+            <div className="space-y-3">
+              {reviews.map((text, i) => (
+                <button key={i} type="button" onClick={() => setSelected(i)}
+                  className={"w-full rounded-2xl border p-4 text-left text-sm leading-relaxed transition " + (selected === i ? "border-accent bg-accent/10 text-white" : "border-white/10 bg-navy-muted/40 text-text-muted hover:border-white/25")}>
+                  {text}
+                </button>
+              ))}
+            </div>
+            {genError && <p className="text-sm text-accent" role="alert">{genError}</p>}
+            <button type="button" disabled={busy} onClick={copyAndOpen}
+              className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white disabled:opacity-50">
+              {busy ? "Copying…" : "Copy & open Google"}
+            </button>
+            <button type="button" onClick={() => router.push("/")} className="w-full text-center text-sm text-text-muted hover:text-white">
+              Cancel
+            </button>
+          </section>
+        )}
+
+        {step === "success" && (
+          <section className="mt-10 flex flex-col items-center gap-5 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20 text-5xl animate-bounce">
+              ✅
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold text-white">Review Copied!</h2>
+              <p className="text-sm text-text-muted">Your review is ready — just paste it on Google.</p>
+            </div>
+
+            <div className="w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-left space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-widest text-accent">Your copied review</p>
+                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-medium">Copied</span>
+              </div>
+              <p className="text-sm text-white leading-relaxed">{reviews[selected]}</p>
+            </div>
+
+            <div className="w-full rounded-2xl border border-white/10 bg-navy-muted/40 p-4 text-left space-y-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-text-muted">3 steps to post</p>
+              <div className="space-y-2">
+                {[
+                  "Google will open — tap the star rating you want",
+                  "Tap the review text box — long press and Paste",
+                  "Hit Post — done in 10 seconds!",
+                ].map((s, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">{i + 1}</span>
+                    <p className="text-sm text-white">{s}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button type="button" onClick={() => { window.location.href = business?.gmb_link; }}
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-full bg-accent text-sm font-semibold text-white hover:brightness-110 transition">
+              Opening Google in {countdown}s — tap to open now
+            </button>
+
+            <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-full bg-accent rounded-full transition-all duration-1000" style={{ width: ((5 - countdown) / 5 * 100) + "%" }} />
+            </div>
+
+            <p className="text-xs text-text-muted">Review not pasting? Long press inside the Google text box and tap Paste.</p>
+          </section>
+        )}
+
+      </div>
+    </div>
+  );
 }
