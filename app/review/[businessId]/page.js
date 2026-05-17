@@ -144,7 +144,7 @@ function NegativeFeedbackCard({ businessId, rating, businessType }) {
         {busy ? "Sending…" : "Send feedback"}
       </button>
 
-      <p className="text-center text-xs text-white/25">
+      <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wide text-white/40">Your contact <span className="normal-case font-normal text-white/25">(Optional)</span></p><input type="text" placeholder="Your name" autoComplete="name" className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none transition" id="ir-name" /><input type="tel" placeholder="Phone number" autoComplete="tel" className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none transition" id="ir-phone" /></div><p className="text-center text-xs text-white/25">
         Your feedback goes directly to the owner — not posted publicly.
       </p>
     </div>
