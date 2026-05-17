@@ -43,8 +43,6 @@ const ISSUE_CHIPS_BY_TYPE = {
 function NegativeFeedbackCard({ businessId, rating, businessType }) {
   const [selectedIssues, setSelectedIssues] = useState([]);
   const [comment, setComment] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -60,20 +58,14 @@ function NegativeFeedbackCard({ businessId, rating, businessType }) {
     setBusy(true);
     try {
       const feedbackParts = [];
-      if (selectedIssues.length) feedbackParts.push("Issues: " + selectedIssues.join(", "));
+      if (selectedIssues.length) feedbackParts.push(`Issues: ${selectedIssues.join(", ")}`);
       if (comment.trim()) feedbackParts.push(comment.trim());
       const feedbackText = feedbackParts.join("\n") || null;
 
       await fetch("/api/business/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessId,
-          rating,
-          feedback: feedbackText,
-          customerName: customerName.trim() || null,
-          customerPhone: customerPhone.trim() || null,
-        }),
+        body: JSON.stringify({ businessId, rating, feedback: feedbackText }),
       });
     } catch {}
     setSubmitted(true);
@@ -92,12 +84,14 @@ function NegativeFeedbackCard({ businessId, rating, businessType }) {
   return (
     <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-950/20 p-5 space-y-5">
 
+      {/* Sorry message */}
       <div className="rounded-xl border border-red-500/20 bg-red-950/30 px-4 py-3 text-center">
         <p className="text-sm font-medium text-red-300">
           We're sorry to hear that! Please contact us directly so we can make it right.
         </p>
       </div>
 
+      {/* Issue chips */}
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-white/40">What went wrong?</p>
         <div className="flex flex-wrap gap-2">
@@ -122,6 +116,7 @@ function NegativeFeedbackCard({ businessId, rating, businessType }) {
         </div>
       </div>
 
+      {/* Optional comment */}
       <div className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
           Anything else? <span className="normal-case font-normal text-white/25">(Optional)</span>
@@ -139,28 +134,7 @@ function NegativeFeedbackCard({ businessId, rating, businessType }) {
         )}
       </div>
 
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
-          Your contact <span className="normal-case font-normal text-white/25">(Optional — so we can follow up)</span>
-        </p>
-        <input
-          type="text"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="Your name"
-          autoComplete="name"
-          className="w-full rounded-xl border border-white/10 bg-navy/60 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-red-400/50 focus:outline-none transition"
-        />
-        <input
-          type="tel"
-          value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value)}
-          placeholder="Phone number"
-          autoComplete="tel"
-          className="w-full rounded-xl border border-white/10 bg-navy/60 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-red-400/50 focus:outline-none transition"
-        />
-      </div>
-
+      {/* Submit */}
       <button
         type="button"
         disabled={busy || (!selectedIssues.length && !comment.trim())}
@@ -216,6 +190,7 @@ function RatingStep({ rating, hoverRating, setRating, setHoverRating, onContinue
         })}
       </div>
 
+      {/* Negative gate — sorry message + feedback form */}
       {isNegative && (
         <NegativeFeedbackCard
           businessId={businessId}
@@ -228,6 +203,7 @@ function RatingStep({ rating, hoverRating, setRating, setHoverRating, onContinue
         <p className="mt-2 text-center text-xl font-bold tracking-tight text-[#F4B400] drop-shadow-sm">{positiveLabel}</p>
       )}
 
+      {/* Continue only shown for 3-5 stars */}
       {!isNegative && (
         <button
           type="button"
