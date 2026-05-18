@@ -43,6 +43,8 @@ const ISSUE_CHIPS_BY_TYPE = {
 function NegativeFeedbackCard({ businessId, rating, businessType }) {
   const [selectedIssues, setSelectedIssues] = useState([]);
   const [comment, setComment] = useState("");
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -65,7 +67,7 @@ function NegativeFeedbackCard({ businessId, rating, businessType }) {
       await fetch("/api/business/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessId, rating, feedback: feedbackText }),
+        body: JSON.stringify({ businessId, rating, feedback: feedbackText, customerName: customerName.trim() || null, customerPhone: customerPhone.trim() || null }),
       });
     } catch {}
     setSubmitted(true);
