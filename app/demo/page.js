@@ -20,6 +20,11 @@ const MOODS = [
   { id: "celebration", label: "Celebrating",      icon: "🎉", desc: "Birthday or special occasion" },
 ];
 
+const ISSUE_CHIPS = [
+  "Coffee quality", "Slow service", "Staff behaviour", "Cleanliness",
+  "Wrong order", "Pricing / Value", "Ambience / Noise", "Long wait time",
+];
+
 const DEMO_REVIEWS = {
   relaxed: [
     "Good spot for a quiet coffee break. Been coming to Sharma's Cafe in Cidco for a while now — the cold coffee is consistent and the seating is comfortable enough to sit for an hour without feeling rushed.",
@@ -54,10 +59,18 @@ const DEMO_REVIEWS = {
 };
 
 const GEN_STEPS = [
-  { icon: "⭐", msg: "Reading your rating…" },
-  { icon: "🧠", msg: "Understanding your visit…" },
-  { icon: "✍️", msg: "Writing 3 unique reviews…" },
-  { icon: "✨", msg: "Almost ready…" },
+  { icon: "⭐", msg: "Reading your rating...",  sub: "Calibrating the tone" },
+  { icon: "🧠", msg: "AI is thinking...",        sub: "Analyzing your experience" },
+  { icon: "✍️", msg: "Writing your review...", sub: "Crafting 3 unique voices" },
+  { icon: "🔍", msg: "Adding SEO magic...",      sub: "Embedding keywords naturally" },
+  { icon: "✨", msg: "Almost ready...",          sub: "Final quality check" },
+];
+
+const DID_YOU_KNOW = [
+  "Businesses with 4.5+ ratings get 27% more walk-ins than those at 4.0",
+  "90% of customers read reviews before visiting a restaurant",
+  "88% of people trust online reviews as much as personal recommendations",
+  "A 1-star rating increase can boost revenue by up to 9%",
 ];
 
 const STATS = [
@@ -83,18 +96,180 @@ const FEATURES = [
   { icon: "🖨️", title: "Branded QR download", desc: "Download a print-ready branded QR in one click. Place it on your counter, table, or standee — done." },
 ];
 
-// ─── ANIMATED COUNTER ─────────────────────────────────────────────────────────
+// ─── ANIMATED STAT ────────────────────────────────────────────────────────────
 function AnimatedStat({ value, label, delay = 0 }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), delay);
     return () => clearTimeout(t);
   }, [delay]);
-
   return (
     <div className={`text-center transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
       <p className="text-3xl font-extrabold text-white">{value}</p>
       <p className="text-xs text-text-muted mt-1 uppercase tracking-wide">{label}</p>
+    </div>
+  );
+}
+
+// ─── NEGATIVE FEEDBACK FORM (DEMO) ───────────────────────────────────────────
+function DemoNegativeFeedbackCard() {
+  const [selectedIssues, setSelectedIssues] = useState([]);
+  const [comment, setComment] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  function toggleIssue(issue) {
+    setSelectedIssues(prev =>
+      prev.includes(issue) ? prev.filter(i => i !== issue) : [...prev, issue]
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="mt-4 rounded-2xl border border-green-500/30 bg-green-950/40 p-5 text-center space-y-1">
+        <p className="text-green-400 font-semibold text-sm">Thank you for letting us know.</p>
+        <p className="text-xs text-text-muted">We'll look into this and make it right.</p>
+        <p className="text-xs text-accent mt-2">← In real flow, this goes to the owner's private dashboard</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-950/20 p-5 space-y-5">
+      <div className="rounded-xl border border-red-500/20 bg-red-950/30 px-4 py-3 text-center">
+        <p className="text-sm font-medium text-red-300">
+          We're sorry to hear that! Please contact us directly so we can make it right.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/40">What went wrong?</p>
+        <div className="flex flex-wrap gap-2">
+          {ISSUE_CHIPS.map((issue) => {
+            const on = selectedIssues.includes(issue);
+            return (
+              <button key={issue} type="button" onClick={() => toggleIssue(issue)}
+                className={"rounded-full border px-3 py-1.5 text-xs font-medium transition " +
+                  (on ? "border-red-400/60 bg-red-500/20 text-red-300" : "border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/70")}>
+                {issue}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
+          Anything else? <span className="normal-case font-normal text-white/25">(Optional)</span>
+        </p>
+        <textarea value={comment} onChange={e => setComment(e.target.value)}
+          placeholder="Tell us more…" rows={2} maxLength={300}
+          className="w-full rounded-xl border border-white/10 bg-navy/60 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-red-400/50 focus:outline-none resize-none transition" />
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
+          Your contact <span className="normal-case font-normal text-white/25">(Optional)</span>
+        </p>
+        <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)}
+          placeholder="Your name" autoComplete="name"
+          className="w-full rounded-xl border border-white/10 bg-navy/60 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-red-400/50 focus:outline-none transition" />
+        <input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
+          placeholder="Phone number" autoComplete="tel"
+          className="w-full rounded-xl border border-white/10 bg-navy/60 px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-red-400/50 focus:outline-none transition" />
+      </div>
+
+      <button type="button" disabled={!selectedIssues.length && !comment.trim()}
+        onClick={() => setSubmitted(true)}
+        className="flex h-11 w-full items-center justify-center rounded-full bg-red-600 text-sm font-semibold text-white disabled:opacity-40 hover:brightness-110 transition">
+        Send feedback
+      </button>
+
+      <p className="text-center text-xs text-white/25">Your feedback goes directly to the owner — not posted publicly.</p>
+    </div>
+  );
+}
+
+// ─── GENERATING SCREEN (FULL ANIMATED) ───────────────────────────────────────
+function DemoGeneratingScreen() {
+  const [stepIdx, setStepIdx]     = useState(0);
+  const [progress, setProgress]   = useState(0);
+  const [dots, setDots]           = useState(0);
+  const [factIdx, setFactIdx]     = useState(0);
+  const [iconVisible, setIconVisible] = useState(true);
+  const [msgVisible, setMsgVisible]   = useState(true);
+  const [factVisible, setFactVisible] = useState(true);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setIconVisible(false); setMsgVisible(false);
+      setTimeout(() => { setStepIdx(i => Math.min(i+1, GEN_STEPS.length-1)); setIconVisible(true); setMsgVisible(true); }, 200);
+      setFactVisible(false);
+      setTimeout(() => { setFactIdx(i => (i+1) % DID_YOU_KNOW.length); setFactVisible(true); }, 250);
+    }, 1800);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setProgress(p => Math.min(p + (Math.random()*2.5+0.8), 91)), 180);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setDots(d => (d+1)%4), 350);
+    return () => clearInterval(t);
+  }, []);
+
+  const pct  = Math.round(Math.min(progress, 91));
+  const step = GEN_STEPS[stepIdx];
+
+  return (
+    <div className="mt-10 flex flex-col items-center gap-0">
+      <style>{`
+        @keyframes ir-ring-out    { 0%{transform:scale(0.9);opacity:0.7}100%{transform:scale(1.55);opacity:0} }
+        @keyframes ir-orb-breathe { 0%,100%{transform:scale(1)}50%{transform:scale(1.07)} }
+        @keyframes ir-icon-in     { 0%{transform:scale(0.5);opacity:0}100%{transform:scale(1);opacity:1} }
+        @keyframes ir-fade-in     { from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)} }
+        .ir-ring { position:absolute;border-radius:50%;border:1px solid rgba(229,50,45,0.2);animation:ir-ring-out 2.4s ease-out infinite; }
+        .ir-orb  { animation:ir-orb-breathe 2s ease-in-out infinite; }
+        .ir-icon-anim { animation:ir-icon-in 0.2s ease forwards; }
+        .ir-msg-anim  { animation:ir-fade-in 0.2s ease forwards; }
+        .ir-fact-anim { animation:ir-fade-in 0.25s ease forwards; }
+      `}</style>
+      <div style={{ position:'relative', width:96, height:96, marginBottom:28, flexShrink:0 }}>
+        <div className="ir-ring" style={{ inset:-20, animationDelay:'0s' }} />
+        <div className="ir-ring" style={{ inset:-10, animationDelay:'0.45s' }} />
+        <div className="ir-ring" style={{ inset:-3,  animationDelay:'0.9s' }} />
+        <div className="ir-orb" style={{ position:'absolute', inset:0, borderRadius:'50%', background:'rgba(229,50,45,0.08)', border:'1.5px solid rgba(229,50,45,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <span key={stepIdx} className="ir-icon-anim" style={{ fontSize:36, display:'block', opacity:iconVisible?1:0, transition:'opacity 0.15s ease' }}>
+            {step.icon}
+          </span>
+        </div>
+      </div>
+      <div key={`msg-${stepIdx}`} className="ir-msg-anim" style={{ fontSize:16, fontWeight:600, color:'#ffffff', marginBottom:5, letterSpacing:'-0.01em', minHeight:24, textAlign:'center', opacity:msgVisible?1:0, transition:'opacity 0.15s ease' }}>
+        {step.msg}<span style={{ color:'rgba(229,50,45,0.8)' }}>{'.'.repeat(dots)}</span>
+      </div>
+      <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginBottom:28, textAlign:'center' }}>{step.sub}</div>
+      <div style={{ width:'100%', marginBottom:6 }}>
+        <div style={{ width:'100%', height:4, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden', marginBottom:6 }}>
+          <div style={{ height:'100%', width:`${pct}%`, background:'#E5322D', borderRadius:2, transition:'width 0.3s ease' }} />
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,0.25)' }}>
+          <span>Generating your reviews</span><span>{pct}%</span>
+        </div>
+      </div>
+      <div style={{ display:'flex', gap:6, justifyContent:'center', margin:'16px 0' }}>
+        {GEN_STEPS.map((_, i) => (
+          <div key={i} style={{ height:6, borderRadius:3, width:i===stepIdx?20:6, background:i<=stepIdx?'#E5322D':'rgba(255,255,255,0.12)', transition:'all 0.4s ease' }} />
+        ))}
+      </div>
+      <div style={{ marginTop:20, padding:'12px 16px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, width:'100%', textAlign:'center' }}>
+        <div style={{ fontSize:10, color:'rgba(255,255,255,0.25)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:5 }}>Did you know</div>
+        <div key={`fact-${factIdx}`} className="ir-fact-anim" style={{ fontSize:12, color:'rgba(255,255,255,0.45)', lineHeight:1.6, opacity:factVisible?1:0, transition:'opacity 0.2s ease' }}>
+          {DID_YOU_KNOW[factIdx]}
+        </div>
+      </div>
     </div>
   );
 }
@@ -107,20 +282,17 @@ export default function DemoPage() {
   const [mood,        setMood]        = useState(null);
   const [selected,    setSelected]    = useState(0);
   const [copied,      setCopied]      = useState(false);
-  const [genStep,     setGenStep]     = useState(0);
-  const [progress,    setProgress]    = useState(0);
 
   const preview = hoverRating ?? rating ?? 0;
+  const isNegative = rating !== null && rating <= 2;
   const positiveLabel = rating === 3 ? "Good" : rating === 4 ? "Very Good" : rating === 5 ? "Excellent!" : "";
   const reviews = DEMO_REVIEWS[mood] ?? DEMO_REVIEWS.relaxed;
 
+  // Auto-advance from generating after 2.4s
   useEffect(() => {
     if (step !== "generating") return;
-    setGenStep(0); setProgress(0);
-    const stepTimer  = setInterval(() => setGenStep(s => Math.min(s + 1, GEN_STEPS.length - 1)), 550);
-    const progTimer  = setInterval(() => setProgress(p => p >= 95 ? p : p + 3), 80);
-    const doneTimer  = setTimeout(() => { setStep("pick"); setSelected(0); }, 2400);
-    return () => { clearInterval(stepTimer); clearInterval(progTimer); clearTimeout(doneTimer); };
+    const t = setTimeout(() => { setStep("pick"); setSelected(0); }, 2400);
+    return () => clearTimeout(t);
   }, [step]);
 
   function simulateCopy() {
@@ -138,64 +310,45 @@ export default function DemoPage() {
       <div className="min-h-[100dvh] bg-navy">
         <style>{`
           @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-          @keyframes pulse-ring { 0%{transform:scale(0.95);opacity:0.5} 70%{transform:scale(1.05);opacity:0.2} 100%{transform:scale(0.95);opacity:0.5} }
           @keyframes fade-up { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-          .float { animation: float 3s ease-in-out infinite; }
-          .pulse-ring { animation: pulse-ring 2.5s ease-in-out infinite; }
           .fade-up-1 { animation: fade-up 0.6s ease forwards; }
           .fade-up-2 { animation: fade-up 0.6s 0.15s ease both; }
           .fade-up-3 { animation: fade-up 0.6s 0.3s ease both; }
           .fade-up-4 { animation: fade-up 0.6s 0.45s ease both; }
         `}</style>
 
-        {/* Hero */}
         <section className="relative px-4 pt-14 pb-16 text-center overflow-hidden">
-          {/* Background glow */}
-          <div style={{
-            position: "absolute", top: -80, left: "50%", transform: "translateX(-50%)",
-            width: 500, height: 500, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(229,50,45,0.08) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }} />
-
+          <div style={{ position:"absolute", top:-80, left:"50%", transform:"translateX(-50%)", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle, rgba(229,50,45,0.08) 0%, transparent 70%)", pointerEvents:"none" }} />
           <div className="relative mx-auto max-w-xl">
             <div className="fade-up-1 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 mb-6">
               <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
               <span className="text-xs font-semibold text-accent tracking-wide">LIVE INTERACTIVE DEMO</span>
             </div>
-
             <h1 className="fade-up-2 text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight">
-              See InsightRep<br />
-              <span className="text-accent">in action</span>
+              See InsightRep<br /><span className="text-accent">in action</span>
             </h1>
-
             <p className="fade-up-3 mt-4 text-base text-text-muted leading-relaxed max-w-md mx-auto">
               This is exactly what your customers see when they scan your QR code. Try it yourself — takes 30 seconds.
             </p>
-
             <div className="fade-up-4 mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                onClick={() => setStep("rating")}
-                className="flex h-13 w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-accent px-8 py-3.5 text-sm font-bold text-white hover:brightness-110 transition shadow-[0_8px_32px_rgba(229,50,45,0.35)]"
-              >
+              <button onClick={() => setStep("rating")}
+                className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-accent px-8 py-3.5 text-sm font-bold text-white hover:brightness-110 transition shadow-[0_8px_32px_rgba(229,50,45,0.35)]">
                 Try the demo →
               </button>
               <Link href="/login"
-                className="flex h-13 w-full sm:w-auto items-center justify-center rounded-full border border-white/15 px-8 py-3.5 text-sm font-semibold text-white/70 hover:text-white hover:border-white/30 transition">
+                className="flex w-full sm:w-auto items-center justify-center rounded-full border border-white/15 px-8 py-3.5 text-sm font-semibold text-white/70 hover:text-white hover:border-white/30 transition">
                 Get started — ₹1,499/mo
               </Link>
             </div>
           </div>
         </section>
 
-        {/* Stats bar */}
         <section className="border-y border-white/5 bg-white/[0.02] py-8 px-4">
           <div className="mx-auto max-w-xl grid grid-cols-4 gap-4">
             {STATS.map((s, i) => <AnimatedStat key={s.label} value={s.value} label={s.label} delay={i * 100} />)}
           </div>
         </section>
 
-        {/* How it works */}
         <section className="px-4 py-16">
           <div className="mx-auto max-w-xl">
             <p className="text-xs font-bold uppercase tracking-widest text-accent text-center mb-2">How it works</p>
@@ -203,9 +356,7 @@ export default function DemoPage() {
             <div className="space-y-4">
               {HOW_IT_WORKS.map((item, i) => (
                 <div key={i} className="flex items-start gap-4 rounded-2xl border border-white/8 bg-white/[0.02] p-5">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-xl">
-                    {item.icon}
-                  </div>
+                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-xl">{item.icon}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[10px] font-bold text-accent/60 tracking-widest">{item.step}</span>
@@ -219,7 +370,6 @@ export default function DemoPage() {
           </div>
         </section>
 
-        {/* Features grid */}
         <section className="px-4 pb-16">
           <div className="mx-auto max-w-xl">
             <p className="text-xs font-bold uppercase tracking-widest text-accent text-center mb-2">What's included</p>
@@ -236,7 +386,6 @@ export default function DemoPage() {
           </div>
         </section>
 
-        {/* Social proof */}
         <section className="px-4 pb-16">
           <div className="mx-auto max-w-xl">
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 space-y-4">
@@ -252,9 +401,7 @@ export default function DemoPage() {
                       <p className="text-sm font-semibold text-white">{c.name}</p>
                       <p className="text-xs text-text-muted">{c.city}</p>
                     </div>
-                    <span className="text-[10px] font-bold text-green-400 bg-green-400/10 border border-green-400/20 px-2 py-1 rounded-full">
-                      ACTIVE
-                    </span>
+                    <span className="text-[10px] font-bold text-green-400 bg-green-400/10 border border-green-400/20 px-2 py-1 rounded-full">ACTIVE</span>
                   </div>
                 ))}
               </div>
@@ -263,7 +410,6 @@ export default function DemoPage() {
           </div>
         </section>
 
-        {/* Bottom CTA */}
         <section className="px-4 pb-16">
           <div className="mx-auto max-w-xl rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/10 via-transparent to-transparent p-8 text-center space-y-5">
             <p className="text-2xl font-bold text-white">Ready to grow your Google rating?</p>
@@ -272,9 +418,7 @@ export default function DemoPage() {
               className="w-full flex h-12 items-center justify-center rounded-full bg-accent text-sm font-bold text-white hover:brightness-110 transition shadow-[0_8px_32px_rgba(229,50,45,0.3)]">
               Try demo first →
             </button>
-            <Link href="/login" className="block text-sm text-accent hover:underline">
-              Or get started — ₹1,499/month
-            </Link>
+            <Link href="/login" className="block text-sm text-accent hover:underline">Or get started — ₹1,499/month</Link>
           </div>
         </section>
       </div>
@@ -284,13 +428,6 @@ export default function DemoPage() {
   // ── REVIEW FLOW ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-[100dvh] bg-navy px-4 py-8 pb-16">
-      <style>{`
-        @keyframes ir-orb { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
-        @keyframes ir-ring { 0%{transform:scale(0.9);opacity:0.6} 100%{transform:scale(1.7);opacity:0} }
-        .demo-orb { animation: ir-orb 2s ease-in-out infinite; }
-        .demo-ring { position:absolute;border-radius:50%;border:1px solid rgba(229,50,45,0.2);animation:ir-ring 2.4s ease-out infinite; }
-      `}</style>
-
       {/* Demo banner */}
       <div className="mx-auto max-w-lg mb-6">
         <div className="rounded-2xl border border-accent/30 bg-accent/10 px-4 py-3 flex items-center justify-between gap-3">
@@ -298,9 +435,7 @@ export default function DemoPage() {
             <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
             <p className="text-xs font-semibold text-accent">LIVE DEMO — This is what your customers see</p>
           </div>
-          <button onClick={() => setStep("landing")} className="shrink-0 text-xs text-text-muted hover:text-white">
-            ← Back
-          </button>
+          <button onClick={() => setStep("landing")} className="shrink-0 text-xs text-text-muted hover:text-white">← Back</button>
         </div>
       </div>
 
@@ -310,7 +445,7 @@ export default function DemoPage() {
         <p className="mt-1 text-center text-sm text-text-muted">{DEMO_BUSINESS.address}</p>
 
         {/* Progress indicator */}
-        {step !== "landing" && step !== "success" && (
+        {step !== "success" && (
           <div className="mt-6 flex items-center justify-center gap-2">
             {["rating", "mood", "generating", "pick"].map((s, i) => (
               <div key={s} className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -326,10 +461,10 @@ export default function DemoPage() {
           <section className="mt-10 space-y-5">
             <div>
               <h2 className="text-lg font-semibold text-white">How was your experience?</h2>
-              <p className="text-sm text-text-muted mt-1">Tap a star to rate.</p>
+              <p className="text-sm text-text-muted mt-1">Tap a star to rate — then continue to leave a review.</p>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2" onMouseLeave={() => setHoverRating(null)}>
-              {[1, 2, 3, 4, 5].map(n => (
+              {[1,2,3,4,5].map(n => (
                 <button key={n} type="button"
                   onMouseEnter={() => setHoverRating(n)}
                   onClick={() => setRating(n)}
@@ -339,20 +474,18 @@ export default function DemoPage() {
               ))}
             </div>
 
-            {rating !== null && rating <= 2 && (
-              <div className="rounded-2xl border border-red-500/30 bg-red-950/30 p-4 text-center text-sm text-red-300">
-                We're sorry to hear that. Please contact us directly — we'd love to make it right.
-              </div>
-            )}
+            {isNegative && <DemoNegativeFeedbackCard />}
 
             {positiveLabel && (
               <p className="text-center text-2xl font-bold text-[#F4B400] drop-shadow-sm">{positiveLabel}</p>
             )}
 
-            <button type="button" disabled={!rating || rating < 3} onClick={() => setStep("mood")}
-              className="mt-2 flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white transition enabled:hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed">
-              Continue →
-            </button>
+            {!isNegative && (
+              <button type="button" disabled={!rating || rating < 3} onClick={() => setStep("mood")}
+                className="mt-2 flex h-12 w-full items-center justify-center rounded-full bg-accent text-sm font-semibold text-white transition enabled:hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed">
+                Continue →
+              </button>
+            )}
           </section>
         )}
 
@@ -394,31 +527,7 @@ export default function DemoPage() {
         )}
 
         {/* GENERATING */}
-        {step === "generating" && (
-          <div className="mt-20 flex flex-col items-center gap-6">
-            <div style={{ position: "relative", width: 88, height: 88 }}>
-              <div className="demo-ring" style={{ inset: -20, animationDelay: "0s" }} />
-              <div className="demo-ring" style={{ inset: -10, animationDelay: "0.5s" }} />
-              <div className="demo-orb" style={{
-                position: "absolute", inset: 0, borderRadius: "50%",
-                background: "rgba(229,50,45,0.08)", border: "1.5px solid rgba(229,50,45,0.3)",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30,
-              }}>
-                {GEN_STEPS[genStep]?.icon}
-              </div>
-            </div>
-            <div className="text-center space-y-1">
-              <p className="text-base font-semibold text-white">{GEN_STEPS[genStep]?.msg}</p>
-              <p className="text-xs text-text-muted">AI is crafting 3 unique reviews for your visit</p>
-            </div>
-            <div style={{ width: "100%", maxWidth: 260 }} className="space-y-1">
-              <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${progress}%`, background: "#E5322D", borderRadius: 2, transition: "width 0.12s ease" }} />
-              </div>
-              <p className="text-xs text-text-muted text-right">{Math.round(progress)}%</p>
-            </div>
-          </div>
-        )}
+        {step === "generating" && <DemoGeneratingScreen />}
 
         {/* PICK */}
         {step === "pick" && (
@@ -459,15 +568,12 @@ export default function DemoPage() {
         {/* SUCCESS */}
         {step === "success" && (
           <section className="mt-10 flex flex-col items-center gap-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/15 border border-green-500/20 text-4xl animate-bounce">
-              ✅
-            </div>
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/15 border border-green-500/20 text-4xl animate-bounce">✅</div>
             <div>
               <h2 className="text-2xl font-bold text-white">Review Copied!</h2>
               <p className="text-sm text-text-muted mt-1">In the real flow, Google opens — customer pastes and posts in 10 seconds.</p>
             </div>
 
-            {/* The copied review */}
             <div className="w-full rounded-2xl border border-accent/25 bg-accent/5 p-4 text-left space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-widest text-accent">AI-written review</p>
@@ -476,22 +582,16 @@ export default function DemoPage() {
               <p className="text-sm text-white leading-relaxed">{reviews[selected]}</p>
             </div>
 
-            {/* 3 steps */}
             <div className="w-full rounded-2xl border border-white/8 bg-white/[0.02] p-5 text-left space-y-3">
               <p className="text-xs font-bold uppercase tracking-widest text-text-muted">How customer posts it</p>
-              {[
-                "Google opens automatically — they tap the star rating",
-                "Tap the review box — long press and Paste",
-                "Hit Post — live on Google in 10 seconds",
-              ].map((t, i) => (
+              {["Google opens automatically — they tap the star rating", "Tap the review box — long press and Paste", "Hit Post — live on Google in 10 seconds"].map((t, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">{i + 1}</span>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">{i+1}</span>
                   <p className="text-sm text-white">{t}</p>
                 </div>
               ))}
             </div>
 
-            {/* What client gets */}
             <div className="w-full rounded-2xl border border-white/8 bg-white/[0.02] p-5 text-left space-y-3">
               <p className="text-xs font-bold uppercase tracking-widest text-text-muted">What you get as the owner</p>
               {[
@@ -507,7 +607,6 @@ export default function DemoPage() {
               ))}
             </div>
 
-            {/* CTA */}
             <div className="w-full rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/10 via-transparent to-transparent p-6 space-y-4">
               <p className="text-lg font-bold text-white">Want this for your business?</p>
               <p className="text-sm text-text-muted">Setup in 5 minutes. QR on your counter today. Reviews from tomorrow.</p>
