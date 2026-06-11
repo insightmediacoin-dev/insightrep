@@ -6,6 +6,13 @@ const ADMIN_PASSWORD = "577151032779";
 const MONTHLY_PRICE  = 1499;
 const ANNUAL_PRICE   = 12990;
 
+const PACKAGES = [
+  { months: 1,  label: "1 Month",   price: "₹1,499" },
+  { months: 3,  label: "3 Months",  price: "₹3,999" },
+  { months: 6,  label: "6 Months",  price: "₹7,499" },
+  { months: 12, label: "12 Months", price: "₹14,990" },
+];
+
 function formatINR(n) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 }
@@ -13,6 +20,11 @@ function formatINR(n) {
 function formatDate(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function daysUntil(iso) {
+  if (!iso) return null;
+  return Math.ceil((new Date(iso) - new Date()) / (1000 * 60 * 60 * 24));
 }
 
 function PlanBadge({ plan }) {
@@ -28,27 +40,40 @@ function PlanBadge({ plan }) {
   );
 }
 
+function StatusPill({ status, expiresAt }) {
+  const days = daysUntil(expiresAt);
+  const isExpired = status === "expired" || (days !== null && days <= 0);
+  if (isExpired) return <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold text-red-400">Expired</span>;
+  if (status === "paused") return <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-[10px] font-semibold text-yellow-400">Paused</span>;
+  if (days !== null && days <= 5) return <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-semibold text-orange-400">{days}d left</span>;
+  if (status === "active") return <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold text-green-400">Active</span>;
+  return null;
+}
+
 function ChurnBadge({ scans, createdAt }) {
   if (!createdAt) return null;
   const daysSinceCreated = (Date.now() - new Date(createdAt)) / (1000 * 60 * 60 * 24);
-  if (daysSinceCreated < 3) return null; // too new
+  if (daysSinceCreated < 3) return null;
   if (scans === 0) return <span className="rounded-full bg-red-500/15 text-red-400 text-[10px] px-2 py-0.5 font-semibold">No scans</span>;
   return null;
 }
 
 export default function AdminPage() {
-  const [authed,    setAuthed]    = useState(false);
-  const [password,  setPassword]  = useState("");
-  const [pwError,   setPwError]   = useState("");
-  const [businesses, setBusinesses] = useState([]);
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState("");
-  const [updating,  setUpdating]  = useState(null);
-  const [expanded,  setExpanded]  = useState(null);
-  const [search,    setSearch]    = useState("");
-  const [planFilter, setPlanFilter] = useState("all");
-  const [sending,   setSending]   = useState(null);
-  const [sendMsg,   setSendMsg]   = useState({});
+  const [authed,      setAuthed]      = useState(false);
+  const [password,    setPassword]    = useState("");
+  const [pwError,     setPwError]     = useState("");
+  const [businesses,  setBusinesses]  = useState([]);
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState("");
+  const [updating,    setUpdating]    = useState(null);
+  const [expanded,    setExpanded]    = useState(null);
+  const [search,      setSearch]      = useState("");
+  const [planFilter,  setPlanFilter]  = useState("all");
+  const [sending,     setSending]     = useState(null);
+  const [sendMsg,     setSendMsg]     = useState({});
+  const [renewId,     setRenewId]     = useState(null);
+  const [renewMonths, setRenewMonths] = useState(1);
+  const [statusLoading, setStatusLoading] = useState(null);
 
   function login() {
     if (password === ADMIN_PASSWORD) { setAuthed(true); setPwError(""); }
@@ -109,6 +134,46 @@ export default function AdminPage() {
     } finally { setSending(null); }
   }
 
+  async function setStatus(businessId, action) {
+    setStatusLoading(businessId + action);
+    try {
+      const res = await fetch("/api/business/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId, action, adminSecret: ADMIN_PASSWORD }),
+      });
+      const data = await res.json();
+      if (!data.ok) { alert(data.message); return; }
+      setBusinesses(prev => prev.map(b => b.id === businessId ? { ...b, status: action } : b));
+    } catch { alert("Network error."); }
+    finally { setStatusLoading(null); }
+  }
+
+  async function renewPlan(businessId) {
+    const current = businesses.find(b => b.id === businessId);
+    const base = current?.plan_expires_at && new Date(current.plan_expires_at) > new Date()
+      ? new Date(current.plan_expires_at)
+      : new Date();
+    base.setMonth(base.getMonth() + renewMonths);
+    const planExpiresAt = base.toISOString();
+
+    setStatusLoading(businessId + "renew");
+    try {
+      const res = await fetch("/api/business/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId, action: "active", adminSecret: ADMIN_PASSWORD, planExpiresAt }),
+      });
+      const data = await res.json();
+      if (!data.ok) { alert(data.message); return; }
+      setBusinesses(prev => prev.map(b =>
+        b.id === businessId ? { ...b, status: "active", plan_expires_at: planExpiresAt } : b
+      ));
+      setRenewId(null);
+    } catch { alert("Network error."); }
+    finally { setStatusLoading(null); }
+  }
+
   function copyReviewLink(id) {
     const url = `${window.location.origin}/review/${id}`;
     navigator.clipboard.writeText(url).catch(() => {});
@@ -116,7 +181,6 @@ export default function AdminPage() {
 
   useEffect(() => { if (authed) loadBusinesses(); }, [authed]);
 
-  // Metrics
   const monthlyCount  = businesses.filter(b => b.plan === "monthly").length;
   const annualCount   = businesses.filter(b => b.plan === "annual").length;
   const mrr           = (monthlyCount * MONTHLY_PRICE) + (annualCount * Math.round(ANNUAL_PRICE / 12));
@@ -126,7 +190,6 @@ export default function AdminPage() {
   const totalReviews  = businesses.reduce((a, b) => a + (b.reviews ?? 0), 0);
   const atRisk        = businesses.filter(b => (b.plan === "monthly" || b.plan === "annual") && (b.scans ?? 0) === 0).length;
 
-  // Filter
   const filtered = businesses.filter(b => {
     const matchSearch = !search ||
       b.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -156,7 +219,6 @@ export default function AdminPage() {
     <div className="min-h-[100dvh] bg-navy px-4 py-10">
       <div className="mx-auto max-w-7xl space-y-8">
 
-        {/* Header */}
         <header className="flex items-center justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-accent">InsightRep</p>
@@ -168,7 +230,6 @@ export default function AdminPage() {
           </button>
         </header>
 
-        {/* Revenue metrics */}
         <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-text-muted">Revenue</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -195,7 +256,6 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* Usage + health metrics */}
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {[
             { label: "Total Businesses", value: businesses.length, color: "text-white" },
@@ -213,7 +273,6 @@ export default function AdminPage() {
           ))}
         </section>
 
-        {/* Engagement totals */}
         <section className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-4 text-center">
             <p className="text-3xl font-bold text-white">{totalScans.toLocaleString("en-IN")}</p>
@@ -225,7 +284,6 @@ export default function AdminPage() {
           </div>
         </section>
 
-        {/* Search + filter */}
         <section className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <input
             type="text" placeholder="Search by name, email, or owner..." value={search}
@@ -243,7 +301,6 @@ export default function AdminPage() {
           <p className="text-xs text-text-muted whitespace-nowrap">{filtered.length} of {businesses.length}</p>
         </section>
 
-        {/* Table */}
         {loading ? (
           <p className="text-text-muted text-sm">Loading…</p>
         ) : error ? (
@@ -258,6 +315,8 @@ export default function AdminPage() {
                     <th className="px-4 py-3">Contact</th>
                     <th className="px-4 py-3">Owner</th>
                     <th className="px-4 py-3">Plan</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Expires</th>
                     <th className="px-4 py-3">Scans</th>
                     <th className="px-4 py-3">Reviews</th>
                     <th className="px-4 py-3">Revenue</th>
@@ -269,11 +328,15 @@ export default function AdminPage() {
                   {filtered.map((b, i) => {
                     const rev        = b.plan === "monthly" ? MONTHLY_PRICE : b.plan === "annual" ? ANNUAL_PRICE : 0;
                     const isExpanded = expanded === b.id;
+                    const days       = daysUntil(b.plan_expires_at);
+                    const isExpired  = b.status === "expired" || (days !== null && days <= 0);
+                    const isPaused   = b.status === "paused";
+                    const isRenewing = renewId === b.id;
+
                     return (
                       <>
                         <tr key={b.id} className={`border-b border-white/5 transition-colors ${i % 2 === 0 ? "bg-navy/40" : "bg-navy-muted/20"}`}>
 
-                          {/* Business name */}
                           <td className="px-4 py-3 min-w-[160px]">
                             <div className="flex items-start gap-2">
                               <div>
@@ -293,7 +356,6 @@ export default function AdminPage() {
                             </div>
                           </td>
 
-                          {/* Contact */}
                           <td className="px-4 py-3 text-text-muted text-xs max-w-[180px]">
                             <p className="truncate">{b.owner_phone}</p>
                             {b.owner_whatsapp && (
@@ -304,14 +366,12 @@ export default function AdminPage() {
                             )}
                           </td>
 
-                          {/* Owner */}
                           <td className="px-4 py-3">
                             <p className="text-white text-xs font-medium">{b.owner_name ?? "—"}</p>
                             <p className="text-text-muted text-[10px]">{b.owner_designation ?? ""}</p>
                             <p className="text-text-muted text-[10px]">{b.owner_city ?? ""}</p>
                           </td>
 
-                          {/* Plan */}
                           <td className="px-4 py-3">
                             <PlanBadge plan={b.plan} />
                             {b.plan_started_at && (
@@ -319,31 +379,44 @@ export default function AdminPage() {
                             )}
                           </td>
 
-                          {/* Scans */}
+                          {/* STATUS — new column */}
+                          <td className="px-4 py-3">
+                            <StatusPill status={b.status} expiresAt={b.plan_expires_at} />
+                          </td>
+
+                          {/* EXPIRES — new column */}
+                          <td className="px-4 py-3 text-xs whitespace-nowrap">
+                            <p className={days !== null && days <= 5 ? "text-orange-400" : days !== null && days <= 0 ? "text-red-400" : "text-text-muted"}>
+                              {formatDate(b.plan_expires_at)}
+                            </p>
+                            {days !== null && days > 0 && (
+                              <p className="text-[10px] text-text-muted">{days}d left</p>
+                            )}
+                          </td>
+
                           <td className="px-4 py-3">
                             <p className={`font-semibold ${b.scans > 0 ? "text-white" : "text-text-muted"}`}>{b.scans ?? 0}</p>
                           </td>
 
-                          {/* Reviews */}
                           <td className="px-4 py-3">
                             <p className={`font-semibold ${b.reviews > 0 ? "text-accent" : "text-text-muted"}`}>{b.reviews ?? 0}</p>
                           </td>
 
-                          {/* Revenue */}
                           <td className="px-4 py-3 text-xs">
                             <p className={rev > 0 ? "text-green-400 font-semibold" : "text-text-muted"}>
                               {rev > 0 ? formatINR(rev) : "—"}
                             </p>
                           </td>
 
-                          {/* Joined */}
                           <td className="px-4 py-3 text-text-muted text-xs whitespace-nowrap">
                             {formatDate(b.created_at)}
                           </td>
 
-                          {/* Actions */}
-                          <td className="px-4 py-3">
+                          {/* ACTIONS — extended with pause/resume/renew/expire */}
+                          <td className="px-4 py-3 min-w-[200px]">
                             <div className="flex flex-col gap-1.5">
+
+                              {/* Existing plan change + delete */}
                               <div className="flex items-center gap-1.5">
                                 <select value={b.plan ?? "free"} disabled={updating === b.id}
                                   onChange={e => changePlan(b.id, e.target.value)}
@@ -357,6 +430,58 @@ export default function AdminPage() {
                                   Delete
                                 </button>
                               </div>
+
+                              {/* Status controls — new */}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {isPaused || isExpired ? (
+                                  <button disabled={!!statusLoading}
+                                    onClick={() => setStatus(b.id, "active")}
+                                    className="rounded-lg bg-green-500/20 px-2 py-1 text-[10px] font-semibold text-green-400 hover:bg-green-500/30 disabled:opacity-50">
+                                    {statusLoading === b.id + "active" ? "…" : "▶ Resume"}
+                                  </button>
+                                ) : (
+                                  <button disabled={!!statusLoading}
+                                    onClick={() => setStatus(b.id, "paused")}
+                                    className="rounded-lg bg-yellow-500/20 px-2 py-1 text-[10px] font-semibold text-yellow-400 hover:bg-yellow-500/30 disabled:opacity-50">
+                                    {statusLoading === b.id + "paused" ? "…" : "⏸ Pause"}
+                                  </button>
+                                )}
+
+                                <button disabled={!!statusLoading}
+                                  onClick={() => { setRenewId(isRenewing ? null : b.id); setRenewMonths(1); }}
+                                  className="rounded-lg bg-accent/20 px-2 py-1 text-[10px] font-semibold text-accent hover:bg-accent/30 disabled:opacity-50">
+                                  🔁 Renew
+                                </button>
+
+                                {!isExpired && !isPaused && (
+                                  <button disabled={!!statusLoading}
+                                    onClick={() => setStatus(b.id, "expired")}
+                                    className="rounded-lg bg-red-500/20 px-2 py-1 text-[10px] font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50">
+                                    {statusLoading === b.id + "expired" ? "…" : "✕ Expire"}
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Renew dropdown — new */}
+                              {isRenewing && (
+                                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                  <select value={renewMonths} onChange={e => setRenewMonths(Number(e.target.value))}
+                                    className="rounded-lg border border-white/15 bg-navy/80 px-2 py-1 text-xs text-white">
+                                    {PACKAGES.map(p => (
+                                      <option key={p.months} value={p.months}>{p.label} — {p.price}</option>
+                                    ))}
+                                  </select>
+                                  <button disabled={!!statusLoading} onClick={() => renewPlan(b.id)}
+                                    className="rounded-lg bg-accent px-3 py-1 text-[10px] font-semibold text-white disabled:opacity-50">
+                                    {statusLoading === b.id + "renew" ? "Saving…" : "Confirm"}
+                                  </button>
+                                  <button onClick={() => setRenewId(null)} className="text-[10px] text-text-muted hover:text-white">
+                                    Cancel
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* Existing send report */}
                               {b.owner_phone?.includes("@") && (
                                 <div className="flex items-center gap-1.5">
                                   <button onClick={() => sendReport(b)} disabled={sending === b.id}
@@ -374,10 +499,9 @@ export default function AdminPage() {
                           </td>
                         </tr>
 
-                        {/* Expanded details */}
                         {isExpanded && (
                           <tr key={`${b.id}-exp`} className="border-b border-white/5 bg-navy-muted/40">
-                            <td colSpan={9} className="px-4 py-4">
+                            <td colSpan={11} className="px-4 py-4">
                               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 text-xs">
                                 <div>
                                   <p className="text-text-muted uppercase tracking-wide font-semibold mb-1">Address</p>
