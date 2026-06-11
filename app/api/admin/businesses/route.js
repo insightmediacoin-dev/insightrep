@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-admin';
 
-const SECRET = "577151032779";
+const SECRET = process.env.ADMIN_SECRET ?? "577151032779";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -11,7 +11,7 @@ export async function GET(request) {
   const admin = createAdminClient();
   const { data: businesses, error } = await admin
     .from('businesses')
-    .select('id, name, owner_phone, plan, created_at, address, gmb_link, keywords, owner_name, owner_designation, owner_city, owner_whatsapp')
+    .select('id, name, owner_phone, plan, created_at, address, gmb_link, keywords, owner_name, owner_designation, owner_city, owner_whatsapp, status, plan_expires_at')
     .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
