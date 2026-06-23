@@ -15,9 +15,9 @@ export default function LandingPage() {
             <span className="text-base font-semibold tracking-tight text-white">InsightRep</span>
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">
-          <Link href="/demo" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
-  Live demo
-</Link>
+            <Link href="/demo" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
+              Live demo
+            </Link>
             <Link href="/login" className="rounded-full border border-white/10 px-3 py-2 text-sm font-medium text-text-muted transition hover:border-white/20 hover:text-white sm:px-4">
               Owner login
             </Link>
@@ -76,20 +76,15 @@ export default function LandingPage() {
             <div className="relative flex-1 lg:max-w-sm">
               <div className="relative rounded-[2rem] border border-white/10 bg-gradient-to-br from-navy-muted to-navy p-4 shadow-2xl shadow-black/40">
                 <div className="space-y-3 rounded-2xl bg-navy/90 p-4">
-                  {/* Brand */}
                   <p className="text-center text-[10px] font-bold uppercase tracking-widest text-accent">InsightRep</p>
                   <p className="text-center text-base font-bold text-white">Sharma's Cafe</p>
                   <p className="text-center text-xs text-text-muted">Cidco, Chh. Sambhajinagar</p>
-
-                  {/* Stars */}
                   <div className="flex justify-center gap-1 py-1">
                     {[1,2,3,4,5].map(n => (
                       <span key={n} className="text-2xl text-[#F4B400]">★</span>
                     ))}
                   </div>
                   <p className="text-center text-xs font-semibold text-[#F4B400]">Excellent!</p>
-
-                  {/* Mood selector */}
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">What brings you here?</p>
                     <div className="grid grid-cols-2 gap-1.5">
@@ -107,13 +102,10 @@ export default function LandingPage() {
                       ))}
                     </div>
                   </div>
-
-                  {/* AI draft */}
                   <div className="rounded-xl border border-accent/30 bg-accent/5 p-2.5">
                     <p className="text-[9px] font-bold uppercase tracking-wide text-accent mb-1">AI wrote this for you</p>
                     <p className="text-[10px] leading-relaxed text-white/70">"Came here for a date night and the atmosphere was perfect. Food was excellent and staff very attentive."</p>
                   </div>
-
                   <div className="grid grid-cols-2 gap-1.5">
                     <div className="rounded-lg bg-white/10 py-2 text-center text-[10px] font-medium text-white">Copy review</div>
                     <div className="rounded-lg bg-accent py-2 text-center text-[10px] font-semibold text-white">Open Google</div>
@@ -123,8 +115,6 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-
-        
 
         {/* HOW IT WORKS */}
         <section className="px-4 py-14 sm:px-6 sm:py-20">
@@ -152,7 +142,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* FEATURES — Updated with today's features */}
+        {/* FEATURES */}
         <section className="border-t border-white/5 bg-navy-muted/20 px-4 py-14 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-5xl">
             <div className="mb-10 text-center">
@@ -190,31 +180,36 @@ export default function LandingPage() {
               <p className="mt-3 text-text-muted text-sm sm:text-base">Results that pay for themselves in the first week.</p>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 max-w-3xl mx-auto">
-              <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 space-y-5">
+
+              {/* MONTHLY — Coming Soon */}
+              <div className="rounded-2xl border border-white/10 bg-navy-muted/40 p-6 space-y-5 opacity-60">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">Monthly</p>
-                  <p className="mt-2 text-4xl font-extrabold text-white">Rs.1,499<span className="text-base font-medium text-text-muted">/mo</span></p>
-                  <p className="text-xs text-text-muted mt-1">Rs.49 per day · Cancel anytime</p>
+                  <p className="mt-2 text-4xl font-extrabold text-white">Coming Soon</p>
+                  <p className="text-xs text-text-muted mt-1">Monthly plans launching soon</p>
                 </div>
                 <ul className="space-y-2 text-sm text-text-muted">
                   {["Unlimited QR scans","AI review generation","Mood-aware reviews","Time-aware reviews","Dashboard analytics","Weekly email report","PNG QR download"].map(f => (
-                    <li key={f} className="flex items-center gap-2"><span className="text-accent font-bold">✓</span>{f}</li>
+                    <li key={f} className="flex items-center gap-2"><span className="text-white/20 font-bold">✓</span>{f}</li>
                   ))}
                 </ul>
-                <Link href="/login" className="flex h-11 w-full items-center justify-center rounded-full border border-white/15 text-sm font-semibold text-white transition hover:border-accent hover:text-accent">
-                  Get started →
-                </Link>
+                <div className="flex h-11 w-full items-center justify-center rounded-full border border-white/10 text-sm font-semibold text-white/30 cursor-not-allowed">
+                  Coming soon
+                </div>
               </div>
+
+              {/* ANNUAL */}
               <div className="relative rounded-2xl border border-accent/50 bg-accent/5 p-6 space-y-5">
                 <div className="absolute top-4 right-4 bg-accent text-white text-[10px] font-bold px-2 py-1 rounded-full tracking-wide">BEST VALUE</div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-accent">Annual</p>
-                  <p className="mt-2 text-4xl font-extrabold text-white">Rs.12,990<span className="text-base font-medium text-text-muted">/yr</span></p>
-                  <p className="text-xs text-accent font-semibold mt-1">3 months FREE · Save Rs.4,998</p>
-                  <p className="text-xs text-text-muted">Rs.35 per day</p>
+                  <p className="mt-2 text-lg font-medium text-white/40 line-through">Rs.25,000/yr</p>
+                  <p className="text-4xl font-extrabold text-white">Rs.22,000<span className="text-base font-medium text-text-muted">/yr</span></p>
+                  <p className="text-xs text-accent font-semibold mt-1">Founding member rate · Save Rs.3,000</p>
+                  <p className="text-xs text-text-muted">Rs.60 per day</p>
                 </div>
                 <ul className="space-y-2 text-sm text-text-muted">
-                  {["Everything in Monthly","3 extra months free","Priority WhatsApp support","Founding member rate locked forever"].map(f => (
+                  {["Everything in Monthly","Priority WhatsApp support","Dedicated onboarding call","Founding member rate locked forever"].map(f => (
                     <li key={f} className="flex items-center gap-2"><span className="text-accent font-bold">✓</span>{f}</li>
                   ))}
                 </ul>
@@ -222,6 +217,7 @@ export default function LandingPage() {
                   Get started →
                 </Link>
               </div>
+
             </div>
             <p className="text-center text-xs text-text-muted mt-6">Payments via Razorpay coming soon · WhatsApp us to activate: <a href="https://wa.me/917387609098" className="text-accent hover:underline">+91 73876 09098</a></p>
           </div>
