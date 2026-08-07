@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// ─── MOOD CONFIG BY BUSINESS TYPE ────────────────────────────────────────────
+// ─── STATIC MOOD CONFIG BY BUSINESS TYPE (fallback for businesses without AI chips) ──
 const MOODS_BY_TYPE = {
   restaurant: [
     { id: "relaxed",     label: "Relaxed",         icon: "😊", desc: "Chill visit, no rush" },
@@ -113,10 +113,6 @@ const MOODS_BY_TYPE = {
   ],
 };
 
-function getMoodsForType(businessType) {
-  return MOODS_BY_TYPE[businessType] ?? MOODS_BY_TYPE.other;
-}
-
 const MOOD_ASPECTS = {
   relaxed:     ["Ambiance", "Service", "Overall experience"],
   celebration: ["Ambiance", "Food", "Service", "Overall experience"],
@@ -136,6 +132,30 @@ const MOOD_LABELS = {
   friends:     "friends hangout — casual outing or catch-up with friends",
   travel:      "travel visit — passing through or road trip stop",
 };
+
+// ─── UNIFIED MOOD RESOLUTION ──────────────────────────────────────────────────
+// If the business has AI-generated experience_chips (1 general + product chips),
+// use those. Otherwise fall back to the static generic MOODS_BY_TYPE map.
+// Both shapes are normalized to: { id, label, icon, desc, aspects, moodLabel }
+function getAvailableMoods(business) {
+  const customChips = business?.experience_chips?.chips;
+  if (Array.isArray(customChips) && customChips.length > 0) {
+    return customChips.map((c) => ({
+      id:        c.id,
+      label:     c.label,
+      icon:      c.icon || "⭐",
+      desc:      c.desc || "",
+      aspects:   Array.isArray(c.aspects) && c.aspects.length ? c.aspects : ["Overall experience"],
+      moodLabel: c.moodLabel || c.label,
+    }));
+  }
+  const staticList = MOODS_BY_TYPE[business?.business_type] ?? MOODS_BY_TYPE.other;
+  return staticList.map((m) => ({
+    ...m,
+    aspects:   MOOD_ASPECTS[m.id] ?? ["Overall experience"],
+    moodLabel: MOOD_LABELS[m.id]  ?? m.id,
+  }));
+}
 
 const ISSUE_CHIPS_BY_TYPE = {
   restaurant: ["Food quality", "Slow service", "Staff behaviour", "Cleanliness", "Wrong order", "Pricing / Value", "Ambience / Noise", "Long wait time"],
@@ -537,13 +557,19 @@ export default function CustomerReviewPage() {
     return () => clearTimeout(t);
   }, [step, countdown, business]);
 
+  // Prefetch — now resolves aspects/moodLabel from the business's actual
+  // available moods (AI-generated chips or static fallback), not a fixed map.
   useEffect(() => {
-    if (!mood || !rating || rating < 3 || !businessId) return;
+    if (!mood || !rating || rating < 3 || !businessId || !business) return;
     const moodKey = mood + "_" + rating;
     if (prefetchRef.current?.moodKey === moodKey) return;
     prefetchResult.current = null;
-    const aspects   = MOOD_ASPECTS[mood] ?? ["overall experience"];
-    const moodLabel = MOOD_LABELS[mood]  ?? mood;
+
+    const availableMoods = getAvailableMoods(business);
+    const selectedMood   = availableMoods.find((m) => m.id === mood);
+    const aspects   = selectedMood?.aspects   ?? ["overall experience"];
+    const moodLabel = selectedMood?.moodLabel ?? mood;
+
     const controller = new AbortController();
     const promise = fetch("/api/generate-reviews", {
       method: "POST",
@@ -553,14 +579,18 @@ export default function CustomerReviewPage() {
     }).then(res => res.json()).then(data => { prefetchResult.current = data; }).catch(() => { prefetchResult.current = null; });
     prefetchRef.current = { moodKey, controller, promise };
     return () => { controller.abort(); prefetchRef.current = null; prefetchResult.current = null; };
-  }, [mood, rating, businessId]);
+  }, [mood, rating, businessId, business]);
 
   async function generate() {
-    if (!rating || rating < 3 || !mood) return;
+    if (!rating || rating < 3 || !mood || !business) return;
     setGenError(""); setLimitReached(false); setBusy(true); setStep("generating");
-    const aspects   = MOOD_ASPECTS[mood] ?? ["overall experience"];
-    const moodLabel = MOOD_LABELS[mood]  ?? mood;
+
+    const availableMoods = getAvailableMoods(business);
+    const selectedMood   = availableMoods.find((m) => m.id === mood);
+    const aspects   = selectedMood?.aspects   ?? ["overall experience"];
+    const moodLabel = selectedMood?.moodLabel ?? mood;
     const hasNote   = customNote.trim().length > 0;
+
     try {
       let data = null;
       if (!hasNote && prefetchResult.current?.ok && Array.isArray(prefetchResult.current?.reviews)) {
@@ -662,7 +692,7 @@ export default function CustomerReviewPage() {
           <MoodStep mood={mood} setMood={setMood} onContinue={generate}
             onBack={() => setStep("rating")} busy={busy} limitReached={limitReached}
             genError={genError} customNote={customNote} setCustomNote={setCustomNote}
-            availableMoods={getMoodsForType(business?.business_type)} />
+            availableMoods={getAvailableMoods(business)} />
         )}
 
         {step === "generating" && <ReviewGeneratingScreen />}

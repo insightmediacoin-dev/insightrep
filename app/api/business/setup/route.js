@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { isValidOwnerIdentifier, isValidEmail } from "@/lib/phone";
 import { Resend } from "resend";
+import OpenAI from "openai";
+import crypto from "crypto";
 
 const CATEGORY_MAP = {
   restaurant: "food",
@@ -22,6 +24,75 @@ const CATEGORY_MAP = {
   other: "other",
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPERIENCE CHIP GENERATION
+// One general chip (overall vibe) + up to 5 product-specific chips.
+// Only called when business_type / products / keywords / description changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function hashChipInputs(input) {
+  return crypto.createHash("sha256").update(JSON.stringify(input)).digest("hex");
+}
+
+async function generateExperienceChips(openai, { businessType, businessCategory, description, products, keywords }) {
+  if (!openai) return null;
+
+  const productList = products.length ? products.join(", ") : "";
+  const keywordList = keywords.length ? keywords.join(", ") : "";
+
+  const prompt = `You generate short customer-facing "mood chips" for a Google review collection app. A customer scans a QR code and taps one chip describing their visit before an AI writes their review — so chips must be SPECIFIC to this exact business, not generic.
+
+BUSINESS TYPE: ${businessType}
+CATEGORY: ${businessCategory}
+DESCRIPTION: ${description || "Not provided"}
+FEATURED PRODUCTS/SERVICES: ${productList || "None listed"}
+SEO KEYWORDS: ${keywordList || "None listed"}
+
+Generate chips in this exact structure:
+
+1. Exactly ONE "general" chip — captures the overall experience at THIS business specifically (use the description/category, not a generic template). id must be "general".
+
+2. One PRODUCT-SPECIFIC chip per item in FEATURED PRODUCTS/SERVICES, up to a maximum of 5. Each chip must reference that exact product/service by name. If fewer than 5 products are listed, generate exactly that many product chips — do not pad with invented products. If NO products are listed, generate up to 3 chips instead based on the description and keywords, focused on distinct aspects of the business (not products).
+
+For EVERY chip, return:
+- "id": short lowercase snake_case unique id (e.g. "orthopedic_mattress")
+- "label": 2-4 word button label shown to the customer (e.g. "Orthopedic Mattress")
+- "icon": one relevant emoji
+- "desc": 3-6 word description shown under the label (e.g. "Loved the back support")
+- "aspects": array of 2-3 short aspect words for internal AI use (e.g. ["Comfort","Back support","Product quality"])
+- "moodLabel": one natural lowercase sentence describing this visit reason, used internally to seed the review-writing AI (e.g. "purchased the orthopedic mattress and loved the back support and comfort")
+
+Return ONLY valid JSON, no markdown, no explanation:
+{ "chips": [ { "id": "...", "label": "...", "icon": "...", "desc": "...", "aspects": ["..."], "moodLabel": "..." } ] }`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      response_format: { type: "json_object" },
+      temperature: 0.6,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.chips) || parsed.chips.length === 0) return null;
+
+    // Ensure general chip is first
+    const chips = parsed.chips.slice(0, 6);
+    const generalIdx = chips.findIndex((c) => c.id === "general");
+    if (generalIdx > 0) {
+      const [general] = chips.splice(generalIdx, 1);
+      chips.unshift(general);
+    }
+
+    return chips;
+  } catch {
+    return null; // Fail silently — page.js falls back to static chips
+  }
+}
+
 export async function POST(request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ ok: false, message: "Supabase admin client not configured." }, { status: 500 });
@@ -40,22 +111,27 @@ export async function POST(request) {
   if (!businessName || typeof businessName !== "string") return NextResponse.json({ ok: false, message: "Business name required." }, { status: 400 });
   if (!gmbLink || typeof gmbLink !== "string") return NextResponse.json({ ok: false, message: "GMB / Google review link required." }, { status: 400 });
 
-  // ── FIX: business_type is now required, never silently defaults ──────────
+  // business_type is required, never silently defaults
   const normalizedType = String(business_type ?? "").trim().toLowerCase();
   if (!normalizedType) {
     return NextResponse.json({ ok: false, message: "Business type is required." }, { status: 400 });
   }
 
-  // ── FIX: business_category auto-derives from type if frontend omits it ───
   const normalizedCategory =
     (business_category && String(business_category).trim()) ||
     CATEGORY_MAP[normalizedType] ||
     "other";
 
-  // Check if business exists
+  const descriptionTrimmed = String(body.description ?? "").trim();
+  const productsTrimmed    = String(products ?? "").trim();
+  const keywordsTrimmed    = String(keywords ?? "").trim();
+  const productsArr = productsTrimmed ? productsTrimmed.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  const keywordsArr = keywordsTrimmed ? keywordsTrimmed.split(",").map((s) => s.trim()).filter(Boolean) : [];
+
+  // Check if business exists — also pull existing chip hash to avoid regenerating unnecessarily
   const { data: existing } = await admin
     .from("businesses")
-    .select("id")
+    .select("id, experience_chips_hash")
     .eq("owner_phone", ownerIdentifier)
     .maybeSingle();
 
@@ -67,17 +143,48 @@ export async function POST(request) {
     address:           String(address ?? "").trim(),
     locality:          String(body.locality ?? "").trim(),
     gmb_link:          gmbLink.trim(),
-    keywords:          String(keywords ?? "").trim(),
-    products:          String(products ?? "").trim(),
+    keywords:          keywordsTrimmed,
+    products:          productsTrimmed,
     plan:              typeof plan === "string" && plan.trim() ? plan.trim() : "free",
     business_type:     normalizedType,
     business_category: normalizedCategory,
-    description:       String(body.description ?? "").trim(),
+    description:       descriptionTrimmed,
     dining_vibe:       String(body.dining_vibe ?? "").trim(),
     price_range:       String(body.price_range ?? "").trim(),
     customer_profiles: String(body.customer_profiles ?? "").trim(),
     special_features:  String(body.special_features ?? "").trim(),
   };
+
+  // ── Experience chip generation — only regenerate if inputs actually changed ──
+  const chipHash = hashChipInputs({
+    businessType: normalizedType,
+    businessCategory: normalizedCategory,
+    description: descriptionTrimmed,
+    products: productsArr,
+    keywords: keywordsArr,
+  });
+
+  const needsChipGeneration = isNewBusiness || chipHash !== existing?.experience_chips_hash;
+
+  if (needsChipGeneration) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (apiKey) {
+      const openai = new OpenAI({ apiKey });
+      const chips = await generateExperienceChips(openai, {
+        businessType: normalizedType,
+        businessCategory: normalizedCategory,
+        description: descriptionTrimmed,
+        products: productsArr,
+        keywords: keywordsArr,
+      });
+      if (chips) {
+        row.experience_chips      = { chips, generatedAt: new Date().toISOString() };
+        row.experience_chips_hash = chipHash;
+      }
+      // If generation fails, we simply don't touch experience_chips —
+      // existing chips (or null → static fallback) stay in place.
+    }
+  }
 
   let data, error;
 

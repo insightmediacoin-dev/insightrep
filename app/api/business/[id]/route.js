@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 
 const BUSINESS_COLUMNS =
-  "id, created_at, owner_phone, name, address, locality, gmb_link, keywords, products, plan, owner_name, owner_designation, owner_city, owner_whatsapp, business_type, business_category, description, dining_vibe, price_range, customer_profiles, special_features";
+  "id, created_at, owner_phone, name, address, locality, gmb_link, keywords, products, plan, owner_name, owner_designation, owner_city, owner_whatsapp, business_type, business_category, description, dining_vibe, price_range, customer_profiles, special_features, experience_chips";
 
 export async function GET(_request, context) {
   const admin = createAdminClient();
