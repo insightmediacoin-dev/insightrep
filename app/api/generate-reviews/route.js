@@ -256,7 +256,7 @@ export async function POST(request) {
   try { body = await request.json(); }
   catch { return NextResponse.json({ ok: false, message: "Invalid JSON." }, { status: 400 }); }
 
-  const { businessId, rating, aspects, customNote, moodLabel } = body;
+  const { businessId, rating, aspects, customNote, moodLabel, productFocus } = body;
 
   if (!businessId || typeof businessId !== "string")
     return NextResponse.json({ ok: false, message: "businessId required." }, { status: 400 });
@@ -337,6 +337,11 @@ export async function POST(request) {
 
   const aspectLabel = tags.length > 0 ? tags.join(", ") : "overall experience";
 
+  // Product focus — set when the customer tapped a SPECIFIC product chip
+  // (as opposed to the general "Overall Experience" chip or a static mood chip)
+  const focusedProduct = typeof productFocus === "string" ? productFocus.trim() : "";
+  const hasProductFocus = focusedProduct.length > 0;
+
   // Time context
   const nowIST    = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const hourIST   = nowIST.getHours();
@@ -360,15 +365,39 @@ export async function POST(request) {
   const calibration = STAR_RULES[stars];
   const seoRule     = buildSeoRule(keywords, businessName, cityName);
 
-  // Product reference instruction
-  let productInstruction;
-  if (noteIsUsable) {
-    productInstruction = `Customer's own note: "${customerNote}"\nUse ONLY what they specifically mentioned. Distribute details across the 3 reviews — never repeat the same detail twice. If their note is vague, write from the business profile instead.`;
-  } else if (products.length > 0) {
-    productInstruction = `Notable items available to reference: [${products.join(", ")}]\nUse maximum 1 item name across all 3 reviews combined. Only if it fits naturally. Never force it. Never repeat.`;
-  } else {
-    productInstruction = `No specific items available. Write about ${typeConfig.reviewing} in natural general terms. Never invent specific item names.`;
+  // ── Product reference instruction ─────────────────────────────────────────
+  // Priority: explicit product-chip selection > customer's own note > generic
+  // product hint > business-type-only fallback. Product focus and a usable
+  // note can both apply — the customer's note adds detail on top of the
+  // mandatory product mention, it doesn't replace it.
+  const instructionParts = [];
+
+  if (hasProductFocus) {
+    instructionParts.push(
+      `Customer specifically selected this product/service: "${focusedProduct}". ` +
+      `This is MANDATORY — all 3 reviews must mention "${focusedProduct}" by name or a very close natural variant (e.g. paraphrasing is fine, omitting it is not). ` +
+      `Vary the phrasing and sentence position across the 3 reviews so it doesn't feel repetitive or copy-pasted, but every single review must reference it. ` +
+      `Other items from the business profile may appear only as brief secondary context — never replace the focused product as the main subject.`
+    );
   }
+
+  if (noteIsUsable) {
+    instructionParts.push(
+      `Customer's own note: "${customerNote}"\n` +
+      `Use ONLY what they specifically mentioned, in addition to the product focus above if present. Distribute details across the 3 reviews — never repeat the same detail twice. If their note is vague, fall back to the business profile instead.`
+    );
+  } else if (!hasProductFocus && products.length > 0) {
+    instructionParts.push(
+      `Notable items available to reference: [${products.join(", ")}]\n` +
+      `Use maximum 1 item name across all 3 reviews combined. Only if it fits naturally. Never force it. Never repeat.`
+    );
+  } else if (!hasProductFocus) {
+    instructionParts.push(
+      `No specific items available. Write about ${typeConfig.reviewing} in natural general terms. Never invent specific item names.`
+    );
+  }
+
+  const productInstruction = instructionParts.join("\n\n");
 
   // Banned phrases for this business type
   const bannedLine = typeConfig.banned.length > 0
@@ -446,6 +475,7 @@ VISIT DETAILS:
 - Time of visit: ${TIME_CONTEXT[timeSlot]}
 - Day type: ${DAY_CONTEXT}
 - Visit purpose/mood: ${moodLabel ?? "general visit"}
+${hasProductFocus ? `- Product/service selected by customer: "${focusedProduct}" (MUST appear in all 3 reviews)` : ""}
 ${noteIsUsable ? `- Customer's own words: "${customerNote}"` : ""}
 
 REVIEWER 1 — ${a1.id}
@@ -473,6 +503,7 @@ FINAL CHECK — before outputting, confirm every review:
 ✓ Zero banned words, zero emojis, zero corporate language
 ✓ SEO: business name + city embedded naturally
 ✓ No invented negatives for 4–5★
+${hasProductFocus ? `✓ MANDATORY: "${focusedProduct}" (or a natural variant) appears in ALL 3 reviews — this is non-negotiable since the customer explicitly selected it` : ""}
 
 Output JSON only.`;
 
@@ -497,9 +528,39 @@ Output JSON only.`;
     try { parsed = JSON.parse(raw); }
     catch { return NextResponse.json({ ok: false, message: "Model returned invalid JSON." }, { status: 502 }); }
 
-    const reviews = Array.isArray(parsed.reviews)
+    let reviews = Array.isArray(parsed.reviews)
       ? parsed.reviews.map(r => stripEmojis(String(r).trim())).filter(r => r.length > 20)
       : [];
+
+    // Safety net: if a product focus was required but the model dropped it
+    // from a review, regenerate is overkill — instead just verify and log.
+    // (We don't silently rewrite text here to avoid introducing artifacts.)
+    if (hasProductFocus && reviews.length >= 3) {
+      const focusLower = focusedProduct.toLowerCase();
+      const missingCount = reviews.filter(r => !r.toLowerCase().includes(focusLower)).length;
+      if (missingCount > 0) {
+        // Retry once with a stricter reminder if the model missed it
+        const retryCompletion = await openai.chat.completions.create({
+          model:           "gpt-4o",
+          response_format: { type: "json_object" },
+          temperature:     0.6,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user",   content: userPrompt + `\n\nSTRICT RETRY: Your previous attempt did not mention "${focusedProduct}" in every review. This time, literally include the words "${focusedProduct}" (or a very close variant) in EVERY SINGLE review — check each one before responding.` },
+          ],
+        });
+        const retryRaw = retryCompletion.choices[0]?.message?.content;
+        if (retryRaw) {
+          try {
+            const retryParsed = JSON.parse(retryRaw);
+            const retryReviews = Array.isArray(retryParsed.reviews)
+              ? retryParsed.reviews.map(r => stripEmojis(String(r).trim())).filter(r => r.length > 20)
+              : [];
+            if (retryReviews.length >= 3) reviews = retryReviews;
+          } catch {}
+        }
+      }
+    }
 
     if (reviews.length < 3)
       return NextResponse.json({ ok: false, message: "Model returned fewer than 3 reviews. Please try again." }, { status: 502 });

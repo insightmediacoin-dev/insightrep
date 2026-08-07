@@ -141,19 +141,25 @@ function getAvailableMoods(business) {
   const customChips = business?.experience_chips?.chips;
   if (Array.isArray(customChips) && customChips.length > 0) {
     return customChips.map((c) => ({
-      id:        c.id,
-      label:     c.label,
-      icon:      c.icon || "⭐",
-      desc:      c.desc || "",
-      aspects:   Array.isArray(c.aspects) && c.aspects.length ? c.aspects : ["Overall experience"],
-      moodLabel: c.moodLabel || c.label,
+      id:             c.id,
+      label:          c.label,
+      icon:           c.icon || "⭐",
+      desc:           c.desc || "",
+      aspects:        Array.isArray(c.aspects) && c.aspects.length ? c.aspects : ["Overall experience"],
+      moodLabel:      c.moodLabel || c.label,
+      // Every AI-generated chip except the general one is a specific product/service —
+      // selecting it means the generated reviews MUST mention that product by name.
+      isProductFocus: c.id !== "general",
     }));
   }
   const staticList = MOODS_BY_TYPE[business?.business_type] ?? MOODS_BY_TYPE.other;
   return staticList.map((m) => ({
     ...m,
-    aspects:   MOOD_ASPECTS[m.id] ?? ["Overall experience"],
-    moodLabel: MOOD_LABELS[m.id]  ?? m.id,
+    aspects:        MOOD_ASPECTS[m.id] ?? ["Overall experience"],
+    moodLabel:      MOOD_LABELS[m.id]  ?? m.id,
+    // Static fallback chips are generic visit-context (relaxed, celebration, etc.),
+    // never a specific product — never force a product mention for these.
+    isProductFocus: false,
   }));
 }
 
@@ -567,14 +573,15 @@ export default function CustomerReviewPage() {
 
     const availableMoods = getAvailableMoods(business);
     const selectedMood   = availableMoods.find((m) => m.id === mood);
-    const aspects   = selectedMood?.aspects   ?? ["overall experience"];
-    const moodLabel = selectedMood?.moodLabel ?? mood;
+    const aspects      = selectedMood?.aspects   ?? ["overall experience"];
+    const moodLabel     = selectedMood?.moodLabel ?? mood;
+    const productFocus  = selectedMood?.isProductFocus ? selectedMood.label : null;
 
     const controller = new AbortController();
     const promise = fetch("/api/generate-reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ businessId, rating, aspects, customNote: "", moodLabel }),
+      body: JSON.stringify({ businessId, rating, aspects, customNote: "", moodLabel, productFocus }),
       signal: controller.signal,
     }).then(res => res.json()).then(data => { prefetchResult.current = data; }).catch(() => { prefetchResult.current = null; });
     prefetchRef.current = { moodKey, controller, promise };
@@ -587,9 +594,10 @@ export default function CustomerReviewPage() {
 
     const availableMoods = getAvailableMoods(business);
     const selectedMood   = availableMoods.find((m) => m.id === mood);
-    const aspects   = selectedMood?.aspects   ?? ["overall experience"];
-    const moodLabel = selectedMood?.moodLabel ?? mood;
-    const hasNote   = customNote.trim().length > 0;
+    const aspects      = selectedMood?.aspects   ?? ["overall experience"];
+    const moodLabel     = selectedMood?.moodLabel ?? mood;
+    const productFocus  = selectedMood?.isProductFocus ? selectedMood.label : null;
+    const hasNote       = customNote.trim().length > 0;
 
     try {
       let data = null;
@@ -608,7 +616,7 @@ export default function CustomerReviewPage() {
           try {
             const res = await fetch("/api/generate-reviews", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ businessId, rating, aspects, customNote: customNote.trim(), moodLabel }),
+              body: JSON.stringify({ businessId, rating, aspects, customNote: customNote.trim(), moodLabel, productFocus }),
               signal: controller.signal,
             });
             data = await res.json();
