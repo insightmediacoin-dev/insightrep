@@ -3,6 +3,25 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import { isValidOwnerIdentifier, isValidEmail } from "@/lib/phone";
 import { Resend } from "resend";
 
+const CATEGORY_MAP = {
+  restaurant: "food",
+  cafe: "food",
+  bakery: "food",
+  fastfood: "food",
+  dhaba: "food",
+  hotel: "hospitality",
+  bar: "hospitality",
+  lounge: "hospitality",
+  salon: "beauty",
+  gym: "fitness",
+  clinic: "healthcare",
+  retail: "retail",
+  agency: "agency",
+  education: "education",
+  travel: "travel",
+  other: "other",
+};
+
 export async function POST(request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ ok: false, message: "Supabase admin client not configured." }, { status: 500 });
@@ -20,6 +39,18 @@ export async function POST(request) {
   if (!isValidOwnerIdentifier(ownerIdentifier)) return NextResponse.json({ ok: false, message: "Valid owner identifier required." }, { status: 400 });
   if (!businessName || typeof businessName !== "string") return NextResponse.json({ ok: false, message: "Business name required." }, { status: 400 });
   if (!gmbLink || typeof gmbLink !== "string") return NextResponse.json({ ok: false, message: "GMB / Google review link required." }, { status: 400 });
+
+  // ── FIX: business_type is now required, never silently defaults ──────────
+  const normalizedType = String(business_type ?? "").trim().toLowerCase();
+  if (!normalizedType) {
+    return NextResponse.json({ ok: false, message: "Business type is required." }, { status: 400 });
+  }
+
+  // ── FIX: business_category auto-derives from type if frontend omits it ───
+  const normalizedCategory =
+    (business_category && String(business_category).trim()) ||
+    CATEGORY_MAP[normalizedType] ||
+    "other";
 
   // Check if business exists
   const { data: existing } = await admin
@@ -39,9 +70,8 @@ export async function POST(request) {
     keywords:          String(keywords ?? "").trim(),
     products:          String(products ?? "").trim(),
     plan:              typeof plan === "string" && plan.trim() ? plan.trim() : "free",
-    business_type:     business_type ?? "restaurant",
-    business_category: String(business_category ?? "").trim(),
-    // ── NEW FIELDS ──────────────────────────────────────────────────────────
+    business_type:     normalizedType,
+    business_category: normalizedCategory,
     description:       String(body.description ?? "").trim(),
     dining_vibe:       String(body.dining_vibe ?? "").trim(),
     price_range:       String(body.price_range ?? "").trim(),
