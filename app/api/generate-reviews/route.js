@@ -161,6 +161,43 @@ const FREQUENCY_BANNED_PHRASES = {
   ],
 };
 
+// Catches the "recommend to anyone in [city] looking for [category]" directory-
+// listing ending as a PATTERN, not a literal phrase — a prompt-only ban gets
+// reworded around every time ("must-visit for anyone" -> "worth checking out
+// if you're in" -> "recommend to friends looking for"). This asks a second
+// model call to judge the ending's function, not its exact wording.
+async function detectGenericClosers(openai, reviews) {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content: `You check Google review endings for one specific flaw: does the review end by recommending the business to a general audience in the city — the kind of line a business directory or ad would write, not something a real individual customer would say about their own visit?
+
+Flagged (directory/ad-style, regardless of exact wording): "worth checking out if you're in [city]", "would recommend to anyone looking for X in [city]", "a great spot in [city] for X", "must-visit for anyone looking for X", "recommend it to friends/anyone looking for X in [city]", "definitely worth a visit if you're in the area".
+
+NOT flagged (genuine personal ending): the reviewer's own future intent ("I'll be back"), a specific detail about their visit, a direct personal verdict without addressing a general audience, or simply ending on how the product/service performed for them.
+
+Return ONLY JSON: { "violations": [true or false, true or false, true or false] } — exactly one boolean per review, same order as given.`,
+        },
+        {
+          role: "user",
+          content: reviews.map((r, i) => `Review ${i + 1}: ${r}`).join("\n\n"),
+        },
+      ],
+    });
+    const raw = completion.choices[0]?.message?.content;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed.violations) && parsed.violations.length === reviews.length) {
+      return parsed.violations;
+    }
+  } catch {}
+  return reviews.map(() => false); // fail-open — don't block generation if the checker itself errors
+}
+
 async function classifyPurchaseFrequency(openai, biz) {
   try {
     const completion = await openai.chat.completions.create({
@@ -765,6 +802,41 @@ Output JSON only.`;
 
     if (reviews.length < 3)
       return NextResponse.json({ ok: false, message: "Model returned fewer than 3 reviews. Please try again." }, { status: 502 });
+
+    // ── Enforcement pass: generic "recommend to the city" closer pattern ─────
+    if (reviews.length >= 3) {
+      const closerViolations = await detectGenericClosers(openai, reviews);
+      const violationIndexes = closerViolations
+        .map((v, i) => (v ? i + 1 : null))
+        .filter(Boolean);
+
+      if (violationIndexes.length > 0) {
+        const retryCompletion = await openai.chat.completions.create({
+          model:           "gpt-4o",
+          response_format: { type: "json_object" },
+          temperature:     0.7,
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content:
+                userPrompt +
+                `\n\nSTRICT RETRY: Review(s) ${violationIndexes.join(", ")} of your previous attempt ended with a "recommend to anyone in the city" directory-listing style sentence. This is banned regardless of exact wording. Rewrite ALL 3 reviews with endings that stay personal to that one reviewer's own experience — their own future intent, a specific detail, or a direct verdict — never a pitch addressed to a general audience in the city.`,
+            },
+          ],
+        });
+        const retryRaw = retryCompletion.choices[0]?.message?.content;
+        if (retryRaw) {
+          try {
+            const retryParsed = JSON.parse(retryRaw);
+            const retryReviews = Array.isArray(retryParsed.reviews)
+              ? retryParsed.reviews.map(r => stripEmojis(String(r).trim())).filter(r => r.length > 20)
+              : [];
+            if (retryReviews.length >= 3) reviews = retryReviews;
+          } catch {}
+        }
+      }
+    }
 
     reviews = reviews.slice(0, 3);
 
