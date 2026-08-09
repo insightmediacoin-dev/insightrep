@@ -636,7 +636,7 @@ BANNED PATTERNS:
 - Using the business name more than ONCE per review
 - Using the city name more than ONCE per review  
 - Title-case SEO phrases: "Best Retail Store Sambhajinagar" — never
-- Generic ad-copy closers: "must-visit for anyone looking for [X] solutions", "the go-to place for quality [X]" — reads like marketing copy, not a real customer
+- NEVER end a review with a "recommend to anyone / great spot in [city] for [category]" summary sentence — this is a directory-listing or ad-tagline structure regardless of the exact words used ("must-visit for anyone looking for quality sleep solutions", "a great spot in Aurangabad for quality sleep solutions", "the go-to place for X" all count as the SAME violation). Endings must stay personal and specific to THIS reviewer's own experience — what they'd tell a friend, not a pitch to a general audience
 - Emojis anywhere
 - Multiple exclamation marks
 - Corporate tone: reads like a press release
@@ -718,17 +718,36 @@ Output JSON only.`;
       ? parsed.reviews.map(r => stripEmojis(String(r).trim())).filter(r => r.length > 20)
       : [];
 
-    if (hasProductFocus && reviews.length >= 3) {
-      const focusLower = focusedProduct.toLowerCase();
-      const missingCount = reviews.filter(r => !r.toLowerCase().includes(focusLower)).length;
-      if (missingCount > 0) {
+    // ── Enforcement pass: business name (always) + product focus (if set) ────
+    // The prompt ASKS the model to do these things, but asking alone doesn't
+    // guarantee compliance — this verifies the actual output and retries once
+    // with an explicit correction if either rule was missed.
+    if (reviews.length >= 3) {
+      const nameLower = businessName.toLowerCase();
+      const missingNameCount = reviews.filter(r => !r.toLowerCase().includes(nameLower)).length;
+
+      let missingFocusCount = 0;
+      if (hasProductFocus) {
+        const focusLower = focusedProduct.toLowerCase();
+        missingFocusCount = reviews.filter(r => !r.toLowerCase().includes(focusLower)).length;
+      }
+
+      if (missingNameCount > 0 || missingFocusCount > 0) {
+        const retryNotes = [];
+        if (missingNameCount > 0) {
+          retryNotes.push(`${missingNameCount} of your 3 reviews did NOT mention the business name "${businessName}". Every single review must include it exactly once, spelled correctly.`);
+        }
+        if (missingFocusCount > 0) {
+          retryNotes.push(`${missingFocusCount} of your 3 reviews did NOT mention "${focusedProduct}". Every single review must include it (or a very close natural variant).`);
+        }
+
         const retryCompletion = await openai.chat.completions.create({
           model:           "gpt-4o",
           response_format: { type: "json_object" },
           temperature:     0.6,
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user",   content: userPrompt + `\n\nSTRICT RETRY: Your previous attempt did not mention "${focusedProduct}" in every review. This time, literally include the words "${focusedProduct}" (or a very close variant) in EVERY SINGLE review — check each one before responding.` },
+            { role: "user",   content: userPrompt + `\n\nSTRICT RETRY: Your previous attempt failed the following rule(s):\n${retryNotes.map(n => `- ${n}`).join("\n")}\nFix this. Check each of the 3 reviews individually against these rules before responding.` },
           ],
         });
         const retryRaw = retryCompletion.choices[0]?.message?.content;
