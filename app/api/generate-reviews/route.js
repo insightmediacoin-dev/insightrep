@@ -30,6 +30,24 @@ function stripEmojis(text) {
     .trim();
 }
 
+// Hard-filtered phrases — checked by string match, not left to the model's
+// self-compliance. Only unambiguous multi-word phrases are here; single
+// common words (truly, certainly, absolutely) stay prompt-only guidance to
+// avoid false-positive loops.
+const BANNED_PHRASES = [
+  "hidden gem", "nestled", "vibrant", "cozy ambiance", "culinary journey",
+  "gastronomic", "exquisite", "impeccable", "commendable", "exceptional",
+  "delightful", "testament to", "truly amazing", "wonderful experience",
+  "stumbled upon", "discovered this place", "i recently visited",
+  "we decided to visit", "i had the pleasure", "one must try",
+  "above and beyond", "top notch", "top-notch", "exemplary",
+];
+
+function findBannedPhrase(text) {
+  const lower = text.toLowerCase();
+  return BANNED_PHRASES.find(phrase => lower.includes(phrase)) || null;
+}
+
 function getTimeSlot(hour) {
   if (hour >= 6  && hour < 11) return "morning";
   if (hour >= 11 && hour < 16) return "afternoon";
@@ -161,11 +179,12 @@ const FREQUENCY_BANNED_PHRASES = {
   ],
 };
 
-// Catches the "recommend to anyone in [city] looking for [category]" directory-
-// listing ending as a PATTERN, not a literal phrase — a prompt-only ban gets
-// reworded around every time ("must-visit for anyone" -> "worth checking out
-// if you're in" -> "recommend to friends looking for"). This asks a second
-// model call to judge the ending's function, not its exact wording.
+// Catches the "if you're looking for X, check out Y" / "recommend to anyone
+// in [city] looking for X" directory-pitch structure as a PATTERN, wherever
+// it appears in the review — a prompt-only ban gets reworded and relocated
+// around every time (ending -> opening -> middle). This asks a second model
+// call to judge the review's overall function, not scan for exact wording
+// in one fixed position.
 async function detectGenericClosers(openai, reviews) {
   try {
     const completion = await openai.chat.completions.create({
@@ -175,11 +194,11 @@ async function detectGenericClosers(openai, reviews) {
       messages: [
         {
           role: "system",
-          content: `You check Google review endings for one specific flaw: does the review end by recommending the business to a general audience in the city — the kind of line a business directory or ad would write, not something a real individual customer would say about their own visit?
+          content: `You check Google reviews for one specific flaw, wherever it appears in the text (opening, middle, or ending): does any part of the review address a general audience of potential customers instead of describing this one reviewer's own personal experience? This is a directory-listing or ad-copy structure, not something a real individual customer writes.
 
-Flagged (directory/ad-style, regardless of exact wording): "worth checking out if you're in [city]", "would recommend to anyone looking for X in [city]", "a great spot in [city] for X", "must-visit for anyone looking for X", "recommend it to friends/anyone looking for X in [city]", "definitely worth a visit if you're in the area".
+Flagged patterns (regardless of exact wording or position in the review): "if you're looking for X, [check out / try / I'd suggest] Y", "would recommend to anyone looking for X in [city]", "worth checking out if you're in [city]", "a great spot in [city] for X", "must-visit for anyone looking for X", "recommend it to friends/anyone looking for X in [city]", "definitely worth a visit if you're in the area", "a solid/good choice for anyone needing/looking for X", "great option if you need X" — this includes SOFTER versions that address a hypothetical "anyone" even without an explicit "if you're looking for" clause. The test is not the exact phrase, it's whether the sentence is talking TO a hypothetical future customer ("anyone needing X") instead of describing what happened to THIS reviewer.
 
-NOT flagged (genuine personal ending): the reviewer's own future intent ("I'll be back"), a specific detail about their visit, a direct personal verdict without addressing a general audience, or simply ending on how the product/service performed for them.
+NOT flagged (genuine personal account): the reviewer describing their own reason for visiting ("was looking for X, found it here"), their own future intent ("I'll be back"), a specific detail about their visit, or a direct personal verdict that does not address a general audience.
 
 Return ONLY JSON: { "violations": [true or false, true or false, true or false] } — exactly one boolean per review, same order as given.`,
         },
@@ -196,6 +215,36 @@ Return ONLY JSON: { "violations": [true or false, true or false, true or false] 
     }
   } catch {}
   return reviews.map(() => false); // fail-open — don't block generation if the checker itself errors
+}
+
+// Combines every hard rule into ONE checklist per review, so a single retry
+// loop can fix everything at once instead of one narrow retry per rule
+// (which is what let violations relocate/dodge between passes).
+async function verifyReviews(openai, reviews, { businessName, focusedProduct, hasProductFocus }) {
+  const nameLower  = businessName.toLowerCase();
+  const focusLower = hasProductFocus ? focusedProduct.toLowerCase() : null;
+  const closerViolations = await detectGenericClosers(openai, reviews);
+
+  return reviews.map((r, i) => {
+    const issues = [];
+    const rLower = r.toLowerCase();
+
+    if (!rLower.includes(nameLower)) {
+      issues.push(`must mention the business name "${businessName}" exactly once`);
+    }
+    if (hasProductFocus && !rLower.includes(focusLower)) {
+      issues.push(`must mention "${focusedProduct}"`);
+    }
+    const banned = findBannedPhrase(r);
+    if (banned) {
+      issues.push(`must not contain the banned phrase "${banned}"`);
+    }
+    if (closerViolations[i]) {
+      issues.push(`must not address a general audience anywhere in the review (e.g. "if you're looking for X, check out Y") — describe only this reviewer's own experience`);
+    }
+
+    return issues;
+  });
 }
 
 async function classifyPurchaseFrequency(openai, biz) {
@@ -330,9 +379,9 @@ const INFREQUENT_ONLY = {
   },
   referral_intent: {
     id: "referral_intent",
-    voice: "Frames the review as advice to someone else considering the same purchase — not personal repeat intent. Warm, helpful tone.",
+    voice: "Already told a specific person in their own life (a sibling, friend, colleague) about this business because they needed the same kind of thing. Describes that real personal action, not a pitch to the reader.",
     length: "2–3 sentences.",
-    open: "Start with advice framing: 'If you're looking for a', 'Would point anyone shopping for this kind of thing toward'.",
+    open: "Start with the personal referral already made: 'Already told my sister to check this place when she needs one', 'Sent a colleague here after mine held up so well'.",
   },
 };
 
@@ -673,7 +722,7 @@ BANNED PATTERNS:
 - Using the business name more than ONCE per review
 - Using the city name more than ONCE per review  
 - Title-case SEO phrases: "Best Retail Store Sambhajinagar" — never
-- NEVER end a review with a "recommend to anyone / great spot in [city] for [category]" summary sentence — this is a directory-listing or ad-tagline structure regardless of the exact words used ("must-visit for anyone looking for quality sleep solutions", "a great spot in Aurangabad for quality sleep solutions", "the go-to place for X" all count as the SAME violation). Endings must stay personal and specific to THIS reviewer's own experience — what they'd tell a friend, not a pitch to a general audience
+- NEVER address a hypothetical future customer anywhere in the review — not at the start, middle, or end. Banned structures regardless of exact wording or position: "if you're looking for X, check out/try Y", "recommend to anyone in [city] looking for X", "worth checking out if you're in [city]", "a great spot in [city] for X", "must-visit for anyone looking for X". Every sentence must describe THIS reviewer's own personal experience — what happened to them, not a pitch to someone else considering the same purchase
 - Emojis anywhere
 - Multiple exclamation marks
 - Corporate tone: reads like a press release
@@ -732,114 +781,80 @@ ${hasProductFocus ? `✓ MANDATORY: "${focusedProduct}" (or a natural variant) a
 
 Output JSON only.`;
 
-  // ── CALL GPT-4o ─────────────────────────────────────────────────────────────
+  // ── CALL GPT-4o — generate, verify against the full checklist, and
+  // self-correct up to MAX_ATTEMPTS. If it still isn't clean after that,
+  // refuse to serve a rule-breaking review rather than ship one silently. ──
+  const MAX_ATTEMPTS = 3;
+  let reviews = [];
+  let lastIssuesByReview = [];
+
   try {
-    const completion = await openai.chat.completions.create({
-      model:           "gpt-4o",
-      response_format: { type: "json_object" },
-      temperature:     0.75,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user",   content: userPrompt   },
-      ],
-    });
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const hasPriorIssues = lastIssuesByReview.some(i => i.length > 0);
+      const correctionNote = !hasPriorIssues
+        ? ""
+        : `\n\nSTRICT CORRECTION — attempt ${attempt}: Your previous attempt had these problems:\n` +
+          lastIssuesByReview
+            .map((issues, i) => (issues.length > 0 ? `Review ${i + 1}: ${issues.join("; ")}` : null))
+            .filter(Boolean)
+            .join("\n") +
+          `\nRewrite ALL 3 reviews, fixing every issue listed above. Check each review individually against the full checklist before responding.`;
 
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return NextResponse.json({ ok: false, message: "Empty model response." }, { status: 502 });
+      const completion = await openai.chat.completions.create({
+        model:           "gpt-4o",
+        response_format: { type: "json_object" },
+        temperature:     attempt === 1 ? 0.75 : 0.6,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user",   content: userPrompt + correctionNote },
+        ],
+      });
 
-    let parsed;
-    try { parsed = JSON.parse(raw); }
-    catch { return NextResponse.json({ ok: false, message: "Model returned invalid JSON." }, { status: 502 }); }
+      const raw = completion.choices[0]?.message?.content;
+      if (!raw) continue;
 
-    let reviews = Array.isArray(parsed.reviews)
-      ? parsed.reviews.map(r => stripEmojis(String(r).trim())).filter(r => r.length > 20)
-      : [];
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch { continue; }
 
-    // ── Enforcement pass: business name (always) + product focus (if set) ────
-    // The prompt ASKS the model to do these things, but asking alone doesn't
-    // guarantee compliance — this verifies the actual output and retries once
-    // with an explicit correction if either rule was missed.
-    if (reviews.length >= 3) {
-      const nameLower = businessName.toLowerCase();
-      const missingNameCount = reviews.filter(r => !r.toLowerCase().includes(nameLower)).length;
+      const candidateReviews = Array.isArray(parsed.reviews)
+        ? parsed.reviews.map(r => stripEmojis(String(r).trim())).filter(r => r.length > 20)
+        : [];
 
-      let missingFocusCount = 0;
-      if (hasProductFocus) {
-        const focusLower = focusedProduct.toLowerCase();
-        missingFocusCount = reviews.filter(r => !r.toLowerCase().includes(focusLower)).length;
-      }
+      if (candidateReviews.length < 3) continue;
 
-      if (missingNameCount > 0 || missingFocusCount > 0) {
-        const retryNotes = [];
-        if (missingNameCount > 0) {
-          retryNotes.push(`${missingNameCount} of your 3 reviews did NOT mention the business name "${businessName}". Every single review must include it exactly once, spelled correctly.`);
-        }
-        if (missingFocusCount > 0) {
-          retryNotes.push(`${missingFocusCount} of your 3 reviews did NOT mention "${focusedProduct}". Every single review must include it (or a very close natural variant).`);
-        }
+      const trimmed = candidateReviews.slice(0, 3);
+      const issues  = await verifyReviews(openai, trimmed, { businessName, focusedProduct, hasProductFocus });
 
-        const retryCompletion = await openai.chat.completions.create({
-          model:           "gpt-4o",
-          response_format: { type: "json_object" },
-          temperature:     0.6,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user",   content: userPrompt + `\n\nSTRICT RETRY: Your previous attempt failed the following rule(s):\n${retryNotes.map(n => `- ${n}`).join("\n")}\nFix this. Check each of the 3 reviews individually against these rules before responding.` },
-          ],
-        });
-        const retryRaw = retryCompletion.choices[0]?.message?.content;
-        if (retryRaw) {
-          try {
-            const retryParsed = JSON.parse(retryRaw);
-            const retryReviews = Array.isArray(retryParsed.reviews)
-              ? retryParsed.reviews.map(r => stripEmojis(String(r).trim())).filter(r => r.length > 20)
-              : [];
-            if (retryReviews.length >= 3) reviews = retryReviews;
-          } catch {}
-        }
-      }
+      reviews = trimmed;
+      lastIssuesByReview = issues;
+
+      const clean = issues.every(i => i.length === 0);
+      if (clean) break;
     }
+  } catch (e) {
+    return NextResponse.json({
+      ok:      false,
+      message: e instanceof Error ? e.message : "OpenAI request failed",
+    }, { status: 502 });
+  }
 
-    if (reviews.length < 3)
-      return NextResponse.json({ ok: false, message: "Model returned fewer than 3 reviews. Please try again." }, { status: 502 });
+  if (reviews.length < 3) {
+    return NextResponse.json({ ok: false, message: "Model returned fewer than 3 reviews. Please try again." }, { status: 502 });
+  }
 
-    // ── Enforcement pass: generic "recommend to the city" closer pattern ─────
-    if (reviews.length >= 3) {
-      const closerViolations = await detectGenericClosers(openai, reviews);
-      const violationIndexes = closerViolations
-        .map((v, i) => (v ? i + 1 : null))
-        .filter(Boolean);
+  const stillHasIssues = lastIssuesByReview.some(i => i.length > 0);
+  if (stillHasIssues) {
+    // Fail safe: never serve a review that breaks a hard rule, even after
+    // 3 attempts. Better for the customer to tap "try again" than to post
+    // something with the wrong business name or an ad-copy pitch line.
+    return NextResponse.json({
+      ok:        false,
+      message:   "Could not generate reviews meeting quality rules after multiple attempts. Please try again.",
+      retryable: true,
+    }, { status: 502 });
+  }
 
-      if (violationIndexes.length > 0) {
-        const retryCompletion = await openai.chat.completions.create({
-          model:           "gpt-4o",
-          response_format: { type: "json_object" },
-          temperature:     0.7,
-          messages: [
-            { role: "system", content: systemPrompt },
-            {
-              role: "user",
-              content:
-                userPrompt +
-                `\n\nSTRICT RETRY: Review(s) ${violationIndexes.join(", ")} of your previous attempt ended with a "recommend to anyone in the city" directory-listing style sentence. This is banned regardless of exact wording. Rewrite ALL 3 reviews with endings that stay personal to that one reviewer's own experience — their own future intent, a specific detail, or a direct verdict — never a pitch addressed to a general audience in the city.`,
-            },
-          ],
-        });
-        const retryRaw = retryCompletion.choices[0]?.message?.content;
-        if (retryRaw) {
-          try {
-            const retryParsed = JSON.parse(retryRaw);
-            const retryReviews = Array.isArray(retryParsed.reviews)
-              ? retryParsed.reviews.map(r => stripEmojis(String(r).trim())).filter(r => r.length > 20)
-              : [];
-            if (retryReviews.length >= 3) reviews = retryReviews;
-          } catch {}
-        }
-      }
-    }
-
-    reviews = reviews.slice(0, 3);
-
+  try {
     // ── Post-generation memory updates (fire-and-forget, don't block response) ──
     const usedArchetypeIds = [a1.id, a2.id, a3.id];
     const updatedRecent = [
